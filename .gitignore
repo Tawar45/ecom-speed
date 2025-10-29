@@ -1,0 +1,59 @@
+# Node modules
+node_modules/
+package-lock.json
+
+# Build / cache folders
+/.cache
+/build
+/app/build
+/public/build/
+/public/_dev
+/app/public/build
+
+# Prisma / local databases
+/prisma/dev.sqlite
+/prisma/dev.sqlite-journal
+database.sqlite
+
+# Environment files
+.env
+.env.*
+env-local
+.env.d.ts
+
+# Extensions build output
+/extensions/*/dist
+
+# Shopify CLI / dev files
+.shopify/*
+.shopify.lock
+
+# React Router auto-generated files
+.react-router/
+
+# Docker
+.dockerignore
+Dockerfile
+
+# IDE / Editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+.DS_Store
+
+# Config files to ignore
+.cursor/
+.editorconfig
+.eslintignore
+.eslintrc.cjs
+.gemini/
+.graphqlrc.ts
+.mcp.json
+.npmrc
+.prettierignore
+
+# Ignore all Markdown files
+*.md
