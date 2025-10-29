@@ -1,12 +1,14 @@
-import { Form, useActionData, useLoaderData, useLocation, useNavigation } from "react-router";
+import { Form, useActionData, useLoaderData, useLocation, useNavigation, useNavigate } from "react-router";
 import { authenticate } from "../shopify.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import createApp from '@shopify/app-bridge';
 import { Redirect } from '@shopify/app-bridge/actions';
 import { useEffect } from 'react';
+import { useFetcher } from "react-router";
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
-  
+
   // Query for active subscriptions
   const query = `
     query {
@@ -37,19 +39,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   try {
     const response = await admin.graphql(query);
     const data = await response.json() as any;
-    
+
     const activeSubscriptions = data.data?.currentAppInstallation?.activeSubscriptions || [];
-    
+
     console.log("Active subscriptions:", activeSubscriptions);
-    
-    return { 
+
+    return {
       admin,
       shopifyApiKey: process.env.SHOPIFY_API_KEY,
       activeSubscription: activeSubscriptions.length > 0 ? activeSubscriptions[0] : null
     };
   } catch (error) {
     console.error("Error fetching active subscriptions:", error);
-    return { 
+    return {
       admin,
       shopifyApiKey: process.env.SHOPIFY_API_KEY,
       activeSubscription: null
@@ -105,7 +107,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           }
         }
       ],
-      returnUrl: `${process.env.SHOPIFY_APP_URL}/app/billing/confirm`
+      returnUrl: `https://admin.shopify.com/store/durgeshg-dev/apps/buy-plan-1/app/pricing`
     };
 
     console.log(" [PRICING ACTION] GraphQL variables-=-=-=-=-=:", variables);
@@ -143,30 +145,63 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function PricingPage() {
+  const fetcher = useFetcher();
+  const isSubmitting = fetcher.state === "submitting";
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (fetcher.data?.success) {
+      // toast.success("Subscription cancelled successfully!");
+      navigate("/app/pricing");
+    }
+  }, [fetcher.data]);
+  console.log("Location in PricingPage:", location);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const chargeId = params.get("charge_id");
+
+    if (chargeId) {
+      fetch(`/app/billing/confirm?charge_id=${chargeId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          console.log("Billing Confirm Response:", data);
+          if (data.success) {
+            console.log("Billing confirmed successfully");
+            // maybe redirect to dashboard or show toast
+            // ✅ Now remove charge_id from the URL
+            // const cleanUrl = location.pathname; // removes ?charge_id=...
+            // window.history.replaceState({}, "", cleanUrl);
+          } else {
+            console.error("Billing confirm failed:", data.error);
+          }
+        });
+    }
+  }, [location.search]);
+
+
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const loaderData = useLoaderData<typeof loader>();
-  let location = useLocation();
   useEffect(() => {
-  //  location = useLocation();
-  console.log("Location:", location);
+    console.log("Location:", location);
     if (actionData?.confirmationUrl && loaderData.shopifyApiKey) {
       // Get host from URL search params
       const searchParams = new URLSearchParams(location.search);
       const host = searchParams.get("host") || '';
-      
+
       console.log("Redirecting with host:", host);
-      
+
       if (!host) {
         console.error("No host parameter found in URL");
         return;
       }
-      
+
       const app = createApp({
         apiKey: loaderData.shopifyApiKey,
         host,
       });
-      
+
       const redirect = Redirect.create(app);
       redirect.dispatch(Redirect.Action.REMOTE, actionData.confirmationUrl);
     }
@@ -175,7 +210,7 @@ export default function PricingPage() {
   // Extract current active plan
   const activeSubscription = loaderData.activeSubscription;
   let currentPlan: string | null = null;
-  
+
   if (activeSubscription) {
     // Extract plan name from subscription (e.g., "Basic Plan" -> "basic")
     const subscriptionName = activeSubscription.name?.toLowerCase() || '';
@@ -227,11 +262,27 @@ export default function PricingPage() {
         )}
 
         {activeSubscription && (
-          <s-banner tone="success">
-            <s-paragraph>
-              <strong>Current Plan:</strong> {activeSubscription.name} (${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
-            </s-paragraph>
-          </s-banner>
+          <>
+            <s-banner tone="success">
+              <s-paragraph>
+                <strong>Current Plan:</strong> {activeSubscription.name} (${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
+              </s-paragraph>
+            </s-banner>
+
+            <fetcher.Form method="post" action="/app/billing/cancel">
+              <div style={{ marginTop: "1rem", display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                <s-button
+                  type="submit"
+                  variant="primary"
+                  tone="critical"
+                  loading={isSubmitting}
+                  disabled={isSubmitting}
+                >
+                  Yes, Cancel Subscription
+                </s-button>
+              </div>
+            </fetcher.Form>
+          </>
         )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
@@ -240,7 +291,7 @@ export default function PricingPage() {
             return (
               <div
                 key={plan.plan}
-                style={{ 
+                style={{
                   position: "relative",
                   border: isActive ? "2px solid #008060" : "1px solid #e1e8ed",
                   borderRadius: "8px",
@@ -248,9 +299,9 @@ export default function PricingPage() {
                 }}
               >
                 {isActive && (
-                  <div style={{ 
-                    position: "absolute", 
-                    top: "1rem", 
+                  <div style={{
+                    position: "absolute",
+                    top: "1rem",
                     right: "1rem",
                     background: "#008060",
                     color: "white",
