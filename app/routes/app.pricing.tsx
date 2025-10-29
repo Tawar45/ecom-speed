@@ -160,13 +160,10 @@ export default function PricingPage() {
       const searchParams = new URLSearchParams(window.location.search);
       console.log(searchParams,'testing');
       let  host = btoa('admin.shopify.com/store/export-dev') //searchParams.get("host") || '';
-      
-      console.log("Redirecting with host:", host);
+          console.log("Redirecting with host:", host);
       console.log("Encoded host:", host);
 // → "dGVzdC1zdG9yZS5teXNob3BpZnkuY29tL2FkbWlu"
-
 console.log("Decoded host:", atob(host));
-
 
       if (!host) {
         console.error("No host parameter found in URL");
