@@ -1,11 +1,9 @@
 import nodemailer from 'nodemailer';
-
 export interface WelcomeEmailData {
   shopDomain: string;
   plan: string;
   price: number;
 }
-
 // ✅ Create a reusable SMTP transporter
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -62,10 +60,16 @@ export async function sendWelcomeEmail(
             <li style="margin: 8px 0;"><strong>Plan:</strong> ${planName}</li>
             <li style="margin: 8px 0;"><strong>Price:</strong> $${price}/month</li>
             <li style="margin: 8px 0;"><strong>Shop:</strong> ${shopDomain}</li>
-            <li style="margin: 8px 0;"><strong>Status:</strong> Active</li>
           </ul>
         </div>
-        <p>You now have access to all the features included in your plan.</p>
+        <p>You now have access to all the features included in your plan. Here's what you can do next:</p>
+        
+        <ul>
+          <li>Access your dashboard to manage your subscription</li>
+          <li>Explore all the features available in your plan</li>
+          <li>Contact our support team if you need any assistance</li>
+        </ul>
+        
         <div style="margin: 30px 0; text-align: center;">
           <a href="${process.env.SHOPIFY_APP_URL}/app" 
              style="background-color: #007cba; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
@@ -133,7 +137,6 @@ export async function sendCancellationEmail(
       </div>
     `,
   };
-
   try {
     await transporter.sendMail(msg);
     console.log(`✅ [EMAIL] Cancellation email sent successfully to ${shopDomain}`);
@@ -141,7 +144,6 @@ export async function sendCancellationEmail(
     console.error('❌ [EMAIL] Error sending cancellation email:', error);
   }
 }
-
 export async function sendExpirationEmail(
   shopDomain: string,
   plan: string

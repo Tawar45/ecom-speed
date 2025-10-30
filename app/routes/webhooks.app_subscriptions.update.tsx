@@ -2,6 +2,7 @@ import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { sendExpirationEmail } from "../utils/email.server";
 import type { ActionFunctionArgs } from "react-router";
+import {sendWelcomeEmail} from "../utils/email.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   console.log(" [SUBSCRIPTION WEBHOOK] Starting subscription update webhook...");
@@ -24,10 +25,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     console.log(" [SUBSCRIPTION WEBHOOK] Subscription data:", subscriptionData);
 
     // Extract subscription information
-    const subscriptionId = subscriptionData.id;
-    const subscriptionName = subscriptionData.name || '';
-    const status = subscriptionData.status || '';
-    const test = subscriptionData.test || false;
+    const subscriptionId = subscriptionData.app_subscription.admin_graphql_api_id;
+    const subscriptionName = subscriptionData.app_subscription.name || '';
+    const status = subscriptionData.app_subscription.status || '';
+    const test = subscriptionData.app_subscription.test || false;
 
     console.log(" [SUBSCRIPTION WEBHOOK] Subscription details:", {
       subscriptionId,
@@ -81,6 +82,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     console.log("✅ [SUBSCRIPTION WEBHOOK] Webhook processed successfully");
+    
+     
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

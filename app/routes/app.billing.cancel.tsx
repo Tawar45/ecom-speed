@@ -1,45 +1,13 @@
-import { Form, useActionData, useLoaderData, useNavigation } from "react-router";
 import { authenticate } from "../shopify.server";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import prisma from "../db.server";
 import { sendCancellationEmail } from "../utils/email.server";
-console.log("Route module loaded: /app/billing/cancel"); // confirm module import
-
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  console.log("Loader started"); // inside loader
-  const { admin, session } = await authenticate.admin(request);
-  try {
-    // Get current subscription from database
-    const shop = await (prisma as any).shop.findUnique({
-      where: { domain: session.shop },
-      include: {
-        subscriptions: {
-          where: { status: "active" },
-          orderBy: { createdAt: "desc" },
-          take: 1
-        }
-      }
-    });
-
-    if (!shop || shop.subscriptions.length === 0) {
-      return { error: "No active subscription found" };
-    }
-
-    const subscription = shop.subscriptions[0];
-    console.log(subscription,'subscriptions');
-    return { subscription };
-  } catch (error) {
-    console.error("Error loading subscription:", error);
-    return { error: "Failed to load subscription" };
-  }
-};
+import type { ActionFunctionArgs } from "react-router";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  console.log(" ----> [BILLING CANCEL ACTION] Starting cancellation process...");
+  console.log(" ----> [BILLING CANCEL API] Starting cancellation process...");
   const { admin, session } = await authenticate.admin(request);
-
   try {
-    // Get current app installation and active subscriptions
+    // Step 1: Get active subscriptions from Shopify
     const query = `
       query {
         currentAppInstallation {
@@ -53,175 +21,75 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     `;
     const response = await admin.graphql(query);
     const data = await response.json();
-    console.log(" ----> [BILLING CANCEL ACTION query-------] GraphQL response:     --=-=-=-=-=-", data);
-    const activeSubscriptions = data.data.currentAppInstallation.activeSubscriptions;
-    
+    console.log(" ----> [BILLING CANCEL API query] GraphQL response:", data);
+
+    const activeSubscriptions = data?.data?.currentAppInstallation?.activeSubscriptions || [];
     if (activeSubscriptions.length === 0) {
-      return { error: "No active subscription found" };
+      return new Response(JSON.stringify({ error: "No active subscription found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const subscriptionId = activeSubscriptions[0].id;
 
-    // Cancel subscription using Shopify GraphQL
+    // Step 2: Cancel the subscription
     const mutation = `
       mutation appSubscriptionCancel($id: ID!) {
         appSubscriptionCancel(id: $id) {
-          appSubscription {
-            id
-            status
-          }
-          userErrors {
-            field
-            message
-          }
+          appSubscription { id status }
+          userErrors { field message }
         }
       }
     `;
-
-    const variables = { id: subscriptionId };
-    const cancelResponse = await admin.graphql(mutation, { variables });
+    const cancelResponse = await admin.graphql(mutation, { variables: { id: subscriptionId } });
     const cancelData = await cancelResponse.json();
-    console.log(" ----> [BILLING CANCEL ACTION cancelResponse-------] GraphQL response:     --=-=-=-=-=-", cancelData);
-    if (cancelData.data.appSubscriptionCancel.userErrors.length > 0) {
-      return { error: cancelData.data.appSubscriptionCancel.userErrors[0].message };
+    console.log(" ----> [BILLING CANCEL API mutation] GraphQL response:", cancelData);
+
+    const userErrors = cancelData?.data?.appSubscriptionCancel?.userErrors || [];
+    if (userErrors.length > 0) {
+      return new Response(JSON.stringify({ error: userErrors[0].message }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    // Update database
+    // Step 3: Update local database
     const shop = await (prisma as any).shop.findUnique({
-      where: { domain: session.shop }
+      where: { domain: session.shop },
     });
 
     if (shop) {
       await (prisma as any).subscription.updateMany({
-        where: { 
-          shopId: shop.id, 
-          status: "active" 
-        },
-        data: { 
-          status: "cancelled",
-          updatedAt: new Date()
-        }
-      });
-
-      // Get the cancelled subscription for email
-      const cancelledSubscription = await (prisma as any).subscription.findFirst({
-        where: { 
-          shopId: shop.id, 
-          status: "cancelled" 
-        },
-        orderBy: { updatedAt: "desc" }
+        where: { shopId: shop.id, status: "active" },
+        data: { status: "cancelled", updatedAt: new Date() },
       });
 
       // Send cancellation email
+      const cancelledSubscription = await (prisma as any).subscription.findFirst({
+        where: { shopId: shop.id, status: "cancelled" },
+        orderBy: { updatedAt: "desc" },
+      });
+
       if (cancelledSubscription) {
         try {
           await sendCancellationEmail(session.shop, cancelledSubscription.plan);
-        } catch (emailError) {
-          console.error("Failed to send cancellation email:", emailError);
-          // Don't fail the whole process if email fails
+        } catch (err) {
+          console.error("Failed to send cancellation email:", err);
         }
       }
     }
 
-    return { success: true };
+    // Step 4: Return JSON response
+    return new Response(JSON.stringify({ success: true, message: "Subscription cancelled successfully" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Subscription cancellation error:", error);
-    return { error: "Failed to cancel subscription" };
+    return new Response(JSON.stringify({ error: "Failed to cancel subscription" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 };
-
-export default function CancelSubscription() {
-  const data = useLoaderData<typeof loader>();
-  console.log(data ,'data');
-  const actionData = useActionData<typeof action>();
-  const navigation = useNavigation();
-  console.log(actionData,'actionData');
-
-  if (actionData?.success) {
-    return (
-      <s-page heading="Subscription Cancelled">
-        <s-section heading="Cancellation Confirmed">
-          <s-banner tone="info">
-            <s-paragraph>
-              Your subscription has been successfully cancelled. 
-              You will continue to have access until the end of your current billing period.
-            </s-paragraph>
-          </s-banner>
-          
-          <s-paragraph>
-            You can resubscribe at any time by visiting our pricing page.
-          </s-paragraph>
-          
-          <s-button-group>
-            <s-button variant="primary" href="/app/pricing">
-              View Plans
-            </s-button>
-            <s-button href="/app">
-              Go to Dashboard
-            </s-button>
-          </s-button-group>
-        </s-section>
-      </s-page>
-    );
-  }
-  
-  console.log(actionData,'you')
-if (data?.error !=='No active subscription found') {
-  return (
-    <s-page heading="Cancel Subscription">
-      <s-section heading="Are you sure you want to cancel?">
-        {actionData?.error && (
-          <s-banner tone="critical">
-            <s-paragraph>Error: {actionData.error}</s-paragraph>
-          </s-banner>
-        )}
-        
-        <s-paragraph>
-          Cancelling your subscription will:
-        </s-paragraph>
-        
-        <s-unordered-list>
-          <s-list-item>Stop future billing</s-list-item>
-          <s-list-item>Keep your access until the end of the current billing period</s-list-item>
-          <s-list-item>Allow you to resubscribe at any time</s-list-item>
-        </s-unordered-list>
-        
-        <s-paragraph>
-          <strong>Choose an option below:</strong>
-        </s-paragraph>
-        
-        <Form method="post">
-          <div style={{ marginTop: "1rem", display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-            <s-button 
-              type="submit" 
-              variant="primary" 
-              tone="critical"
-              loading={navigation.state === "submitting"}
-              disabled={navigation.state === "submitting"}
-            >
-              Yes, Cancel Subscription
-            </s-button>
-            <s-button href="/app">
-              Keep Subscription
-            </s-button>
-          </div>
-        
-        </Form>
-      </s-section>
-    </s-page>
-  );
-}else{
-  return (
-    <s-page heading="Cancel Subscription">
-      <s-section heading="Go pricing page purchase subscription">
-          <s-paragraph>
-           No Active Subscription
-          </s-paragraph>
-          <s-button variant="primary" href="/app/pricing">
-            View Plans
-          </s-button>
-        </s-section>
-    </s-page>
-  );
-}
-}
