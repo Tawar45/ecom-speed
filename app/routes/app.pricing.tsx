@@ -107,7 +107,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           }
         }
       ],
-      returnUrl: `https://admin.shopify.com/store/durgeshg-dev/apps/buy-plan-1/app/pricing`
+      returnUrl: `https://admin.shopify.com/store/export-dev/apps/ecom-speed-experts-2/app/pricing`
     };
 
     console.log(" [PRICING ACTION] GraphQL variables-=-=-=-=-=:", variables);

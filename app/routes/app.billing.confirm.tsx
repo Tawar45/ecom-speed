@@ -44,7 +44,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           if (confirmationUrl) {
             const confirmationUrlObj = new URL(confirmationUrl);
             if (confirmationUrlObj.hostname.includes('myshopify.com')) {
-              shopDomain = confirmationUrlObj.hostname || 'https://durgeshg-dev.myshopify.com/';
+              shopDomain = confirmationUrlObj.hostname || 'https://export-dev.myshopify.com';
             }
           }
         } catch (e) {
