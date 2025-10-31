@@ -222,7 +222,7 @@ export default function PricingPage() {
       name: "Basic",
       price: 10,
       plan: "basic",
-      features: ["Basic features", "Email support", "Standard analytics"]
+      features: ["Basic features", "Email support", "Standard analytics","Testing Add Feature"]
     },
     {
       name: "Pro",
