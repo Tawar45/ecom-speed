@@ -62,11 +62,11 @@ export default function SendEmailPage() {
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
       <h1>📧 Send Test Email ririk</h1>
 
-      {data?.success ? (
+      {/* {data?.success ? (
         <p>✅ {data.message}</p>
       ) : (
         <p>❌ Failed to send email: {data.error}</p>
-      )}
+      )} */}
     </div>
   );
 }

@@ -35,6 +35,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
   `;
 
+
+
+  
   try {
     const response = await admin.graphql(query);
     const data = await response.json() as any;
@@ -239,86 +242,166 @@ export default function PricingPage() {
   const isActivePlan = (planId: string) => currentPlan === planId;
 
   return (
-    <s-page heading="Choose Your Plan">
-      <s-section heading="Pricing Plans">
-        {actionData?.error && (
-          <s-banner tone="critical">
-            <s-paragraph>Error: {actionData.error}</s-paragraph>
-          </s-banner>
-        )}
+    
+  <s-page heading="Choose Your Plan">
+    
+    <s-section heading="Pricing Plans">
+     
+      {/* Error Banner */}
+      {actionData?.error && (
+        <s-banner tone="critical">
+          <s-paragraph>Error: {actionData.error}</s-paragraph>
+           </s-banner>
+        
+      )}
 
-        {activeSubscription && (
-          <>
-            <s-banner tone="success">
-              <s-paragraph>
-                <strong>Current Plan:</strong> {activeSubscription.name} (${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
-              </s-paragraph>
-            </s-banner>
+      {/* Current Plan Banner with Cancel Button (side by side) */}
+      {activeSubscription && (
+        <s-banner >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "0.5rem",
+              background: "none"
+              
+            }}
+          >
+            <s-paragraph>
+              <div
+              style={{background:"none"}}
+              >
+              <strong>Current Plan:</strong> {activeSubscription.name} (
+              ${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
+              </div>
+            </s-paragraph>
 
             <fetcher.Form method="post" action="/app/billing/cancel">
-              <div style={{ marginTop: "1rem", display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                <s-button
-                  type="submit"
-                  variant="primary"
-                  tone="critical"
-                  loading={isSubmitting}
-                  disabled={isSubmitting}
-                >
-                  Yes, Cancel Subscription
-                </s-button>
-              </div>
-            </fetcher.Form>
-          </>
-        )}
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "0.5rem", marginTop: "1rem" }}>
-          {plans.map((plan) => {
-            const isActive = isActivePlan(plan.plan);
-            return (
-              <div
-                key={plan.plan}
-                style={{
-                  position: "relative",
-                  border: isActive ? "2px solid #008060" : "1px solid #e1e8ed",
-                  borderRadius: "8px",
-                  padding: "0"
-                }}
+              <s-button
+                type="submit"
+                variant="primary"
+                tone="critical"
+                loading={isSubmitting}
+                disabled={isSubmitting}
               >
-                <s-section >
-                  <div style={{ textAlign: "center" }}>
-                    <h2>{plan.name}</h2>
+                Yes, Cancel Subscription
+              </s-button>
+            </fetcher.Form>
+          </div>
+        </s-banner>
+      )}
+
+      {/* Pricing Plan Cards */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+           gap: "0.5rem",
+          marginTop: "1rem",
+        }}
+       
+      >
+        {plans.map((plan) => {
+          const isActive = isActivePlan(plan.plan);
+          return (
+            <div
+              key={plan.plan}
+              style={{
+                position: "relative",
+                backgroundColor: "#fff",
+                border: isActive? "2px solid #ddd": "1px solid #ddd",
+                borderRadius: "8px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                paddingLeft: "15px",
+                width:"250px",
+                height:"300px",
+              }}
+            >
+              <s-section>
+                <div style={{ textAlign: "center" }}>
+                  <h2
+                    style={{
+                      fontSize: "1rem",
+                      fontWeight: "600",
+                      color: "#333",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    {plan.name}
+                  </h2>
+                </div>
+
+                {/* Price */}
+                <s-paragraph>
+                  <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                    <strong
+                      style={{
+                        fontSize: "2rem",
+                        fontWeight: "700",
+                      }}
+                    >
+                      ${plan.price}
+                    </strong>
+                    <span
+                      style={{
+                        fontSize: "0.9rem",
+                        color: "#666",
+                        marginLeft: "2px",
+                      }}
+                    >
+                      /mo
+                    </span>
                   </div>
-                  <s-paragraph>
-                  <div style={{ textAlign: "center" }}>
-                    <strong>${plan.price}/month</strong>
-                    </div>
-                  </s-paragraph>
-                  <div style={{ textAlign: "center" }}>
+                </s-paragraph>
+
+                {/* Subscribe Button */}
+                <div style={{ textAlign: "center", marginBottom: "1.2rem" }}>
                   <Form method="post">
                     <input type="hidden" name="plan" value={plan.plan} />
                     <input type="hidden" name="price" value={plan.price} />
                     <s-button
                       type="submit"
                       variant={isActive ? "secondary" : "primary"}
-                      loading={navigation.state == "submitting"}
-                      disabled={navigation.state == "submitting" || isActive}>
-                      {isActive ? "Current Plan" : `Subscribe to ${plan.name}`}
+                      loading={navigation.state === "submitting"}
+                      disabled={navigation.state === "submitting" || isActive}
+                    >
+                      {isActive
+                        ? "Current Plan"
+                        : `Subscribe to ${plan.name}`}
                     </s-button>
                   </Form>
-                  </div>
-                  <s-unordered-list>
-                    {plan.features.map((feature, index) => (
-                      <s-list-item key={index}>{feature}</s-list-item>
-                    ))}
-                  </s-unordered-list>
-                </s-section>
-              </div>
-            );
-          })}
-        </div>
+                </div>
 
-        
-      </s-section>
-    </s-page>
-  );
-}
+                {/* Feature List */}
+                <s-unordered-list>
+                  
+                  {plan.features.map((feature, index) => (
+                    <s-list-item key={index}>
+                      <div
+                        style={{
+                          backgroundColor:"#F5F5F5",
+                          borderRadius: "8px",
+                          marginTop: "0.4rem",
+                          textAlign: "left",
+                          padding:"8px 12px",
+                        }}
+                      >
+                        {feature}
+                      </div>
+                    </s-list-item>
+            
+                  ))}
+                 
+                </s-unordered-list>
+              
+              </s-section>
+            </div>
+          );
+        })}
+      </div>
+      
+    </s-section>
+  </s-page>
+);}

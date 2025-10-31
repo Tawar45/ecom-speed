@@ -71,3 +71,6 @@
     padding-bottom: 1rem;
   }
 }
+
+
+.banner.in-section { background: none !important; }
