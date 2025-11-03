@@ -27,7 +27,8 @@ transporter.verify((error, success) => {
 export async function sendWelcomeEmail(
   shopDomain: string,
   plan: string,
-  price: number
+  price: number,
+  recivederEmail:string,
 ): Promise<void> {
   console.log('📧 [EMAIL] Starting welcome email process...');
   console.log('📧 [EMAIL] Email parameters:', { shopDomain, plan, price });
@@ -44,9 +45,9 @@ export async function sendWelcomeEmail(
   };
 
   const planName = planNames[plan as keyof typeof planNames] || plan;
-
+ console.log(recivederEmail," recivederEmail testing")
   const msg = {
-    to: `rohit45.tawar@gmail.com`,
+    to: recivederEmail,
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Welcome to ${planName} Plan!`,
     html: `

@@ -1,17 +1,27 @@
 import { Form, useActionData, useLoaderData, useLocation, useNavigation, useNavigate } from "react-router";
 import { authenticate } from "../shopify.server";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import createApp from '@shopify/app-bridge';
 import { Redirect } from '@shopify/app-bridge/actions';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useFetcher } from "react-router";
+import { sendWelcomeEmail } from "../utils/email.server";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
 
-  // Query for active subscriptions
-  const query = `
+  const { admin, session } = await authenticate.admin(request);
+  const url = new URL(request.url);
+  const chargeId = url.searchParams.get("charge_id");
+  console.log(chargeId,'chargeId');
+
+  const combinedQuery = `
     query {
+      shop {
+        id
+        name
+        email
+        myshopifyDomain
+      }
       currentAppInstallation {
         activeSubscriptions {
           id
@@ -35,48 +45,81 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
     }
   `;
-
   try {
-    const response = await admin.graphql(query);
+    const response = await admin.graphql(combinedQuery);
     const data = await response.json() as any;
-
+    // console.log(data?.data?.shop.email,'data');
     const activeSubscriptions = data.data?.currentAppInstallation?.activeSubscriptions || [];
+      // If there's an active subscription, inspect its status and optionally send a welcome email.
+    const activeSubscription = activeSubscriptions.length > 0 ? activeSubscriptions[0] : null;
+    if (activeSubscription) {
+      // Normalize status (Shopify may use 'ACTIVE', 'active', 'accepted', etc.)
+      const status = (activeSubscription.status ?? "").toString().toLowerCase();
+      // Decide which statuses you consider successful/final for sending welcome email
+      const successStatuses = ["active", "accepted", "paid", "success"];
 
-    console.log("Active subscriptions:", activeSubscriptions);
+      if (successStatuses.includes(status) && chargeId) {
+        try {
+          // dynamic import so this module stays server-only
+          const { sendWelcomeEmail } = await import("../utils/email.server");
+          // Compose email fields
+          const shopDomain = session.shop; // e.g. "example-store.myshopify.com"
+          const planName = activeSubscription.name ?? "Your Plan";
+          const recivederEmail = data?.data?.shop.email
+          // Try to find a price/amount if present
+          let amount = 0;
+          try {
+            const lineItem = activeSubscription.lineItems?.[0];
+            amount = lineItem?.plan?.pricingDetails?.price?.amount ?? 0;
+          } catch (_) {
+            amount = 0;
+          }
+          // NOTE: determine recipient — you may want to derive the merchant email or use a support/owner email.
+          // If you have access to the merchant's email from session or another API, use that here.
+          const recipient = process.env.EMAIL_SUPPORT_TO; // fallback; replace with real recipient logic
+
+          await sendWelcomeEmail(shopDomain, planName, Number(amount),recivederEmail);
+          console.log(`[PRICING LOADER] Sent welcome email for ${shopDomain} plan=${planName} id=${activeSubscription.id}`);
+        } catch (emailErr) {
+          console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
+          // Do NOT throw — loader should still return data even if email fails.
+        }
+      } else {
+        console.log(`[PRICING LOADER] Subscription found but status="${activeSubscription.status}" — skipping welcome email.`);
+      }
+    }
 
     return {
       admin,
       shopifyApiKey: process.env.SHOPIFY_API_KEY,
-      activeSubscription: activeSubscriptions.length > 0 ? activeSubscriptions[0] : null
+      activeSubscription: activeSubscriptions.length > 0 ? activeSubscriptions[0] : null,
+      shop: session.shop,
     };
   } catch (error) {
     console.error("Error fetching active subscriptions:", error);
     return {
       admin,
       shopifyApiKey: process.env.SHOPIFY_API_KEY,
-      activeSubscription: null
+      activeSubscription: null,
+      shop: session.shop,
     };
   }
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-
   try {
     const { admin, session } = await authenticate.admin(request);
-
-
+    const storeName = session.shop.replace('.myshopify.com', '');
+    const APP_HANDLE = process.env.SHOPIFY_APP_HANDLE || 'ecom-speed-experts-2';
+     // Build dynamic return URL
+    let returnUrl = `https://admin.shopify.com/store/${storeName}/apps/${APP_HANDLE}/app/pricing`;
     const formData = await request.formData();
     const plan = formData.get("plan") as string;
-    const price = parseFloat(formData.get("price") as string);
-
-
-
-    // Validate form data
+    const price = parseFloat(formData.get("price") as string);    // Validate form data
     if (!plan || !price || isNaN(price)) {
       console.error("----> [PRICING ACTION] Invalid form data:", { plan, price });
       return { error: "Invalid plan or price data" };
     }
-
     // Create app subscription using Shopify GraphQL (2025 compliant)
     const mutation = `
       mutation appSubscriptionCreate($name: String!, $lineItems: [AppSubscriptionLineItemInput!]!, $returnUrl: URL!) {
@@ -107,32 +150,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           }
         }
       ],
-      returnUrl: `https://admin.shopify.com/store/export-dev/apps/ecom-speed-experts-2/app/pricing`
+      returnUrl: returnUrl
     };
-
-    console.log(" [PRICING ACTION] GraphQL variables-=-=-=-=-=:", variables);
     const response = await admin.graphql(mutation, { variables });
     const data = await response.json() as any;
-
 
     console.log(" ----> [PRICING ACTION] GraphQL response:     --=-=-=-=-=-", data);
     if (data.errors) {
       console.error("❌ [PRICING ACTION] GraphQL errors:", data.errors);
       return { error: `GraphQL Error: ${data.errors[0]?.message || "Unknown error"}` };
     }
-
     if (data.data.appSubscriptionCreate.userErrors.length > 0) {
       console.error("❌ [PRICING ACTION] User errors:", data.data.appSubscriptionCreate.userErrors);
       return { error: data.data.appSubscriptionCreate.userErrors[0].message };
     }
-
     const confirmationUrl = data.data.appSubscriptionCreate.confirmationUrl;
     if (!confirmationUrl) {
       console.error("❌ [PRICING ACTION] No confirmation URL received");
       return { error: "No confirmation URL received from Shopify" };
     }
-
-
     return { confirmationUrl };
   } catch (error) {
     console.error("--- [PRICING ACTION] Unexpected error:", {
@@ -152,56 +188,49 @@ export default function PricingPage() {
 
   useEffect(() => {
     if (fetcher.data?.success) {
-      // toast.success("Subscription cancelled successfully!");
       navigate("/app/pricing");
     }
-  }, [fetcher.data]);
-  console.log("Location in PricingPage:", location);
+  }, [fetcher.data, navigate]);
+
+
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const chargeId = params.get("charge_id");
-
     if (chargeId) {
       fetch(`/app/billing/confirm?charge_id=${chargeId}`)
         .then((res) => res.json())
         .then((data) => {
-          console.log("Billing Confirm Response:", data);
           if (data.success) {
-            console.log("Billing confirmed successfully");
-            // maybe redirect to dashboard or show toast
-            // ✅ Now remove charge_id from the URL
-            // const cleanUrl = location.pathname; // removes ?charge_id=...
-            // window.history.replaceState({}, "", cleanUrl);
-          } else {
-            console.error("Billing confirm failed:", data.error);
+            console.log('send mail');
+            const newUrl = location.pathname;
+            window.history.replaceState({}, "", newUrl);
+          //  sendWelcomeEmail('export-dev.myshopify.com','basic plan',10); 
           }
+        })
+        .catch((error) => {
+          console.error("Error sending welcome email:", error);
         });
     }
   }, [location.search]);
 
-
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const loaderData = useLoaderData<typeof loader>();
+  console.log(loaderData,'loaderData');
   useEffect(() => {
-    console.log("Location:", location);
+    const storeName = loaderData.shop?.replace('.myshopify.com', '');
     if (actionData?.confirmationUrl && loaderData.shopifyApiKey) {
       // Get host from URL search params
-      const searchParams = new URLSearchParams(location.search);
-      const host = searchParams.get("host") || '';
-
-      console.log("Redirecting with host:", host);
-
+      let  host = btoa('admin.shopify.com/store/'+storeName);
       if (!host) {
         console.error("No host parameter found in URL");
         return;
       }
-
       const app = createApp({
         apiKey: loaderData.shopifyApiKey,
         host,
       });
-
       const redirect = Redirect.create(app);
       redirect.dispatch(Redirect.Action.REMOTE, actionData.confirmationUrl);
     }
