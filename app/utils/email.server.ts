@@ -1,3 +1,4 @@
+import { cancellationEmailTemplate } from "../utils/cancel_subscription_template";
 import nodemailer from 'nodemailer';
 export interface WelcomeEmailData {
   shopDomain: string;
@@ -43,9 +44,7 @@ export async function sendWelcomeEmail(
     pro: 'Pro',
     business: 'Business',
   };
-
-  const planName = planNames[plan as keyof typeof planNames] || plan;
- console.log(recivederEmail," recivederEmail testing")
+const planName = planNames[plan as keyof typeof planNames] || plan;
   const msg = {
     to: recivederEmail,
     from: process.env.SMTP_FROM_EMAIL,
@@ -80,20 +79,15 @@ export async function sendWelcomeEmail(
         <p>Best regards,<br>The Team</p>
       </div>
     `,
-    text: `
-Welcome to Your New Subscription!
-
-Hello,
-Thank you for subscribing to our ${planName} Plan for $${price}/month!
+    text: `Welcome to Your New Subscription! 
+    Hello, Thank you for subscribing to our ${planName} Plan for $${price}/month!
 
 Your Subscription Details:
 - Plan: ${planName}
 - Price: $${price}/month  
 - Shop: ${shopDomain}
 - Status: Active
-
 Go to Dashboard: ${process.env.SHOPIFY_APP_URL}/app
-
 Best regards,
 The Team
     `,
@@ -111,7 +105,8 @@ The Team
 
 export async function sendCancellationEmail(
   shopDomain: string,
-  plan: string
+  plan: string,
+  username:string
 ): Promise<void> {
   if (!process.env.SMTP_FROM_EMAIL) {
     console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping cancellation email');
@@ -125,18 +120,7 @@ export async function sendCancellationEmail(
     to: `rohit45.tawar@gmail.com`,
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Subscription Cancelled - ${planName} Plan`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #333;">Subscription Cancelled</h1>
-        <p>Your <strong>${planName} Plan</strong> subscription has been cancelled.</p>
-        <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <ul style="list-style: none; padding: 0;">
-            <li>Your subscription will remain active until the end of your billing period.</li>
-            <li>You can resubscribe anytime.</li>
-          </ul>
-        </div>
-      </div>
-    `,
+    html: cancellationEmailTemplate({shopName:shopDomain, planName, cancelDate: '26-12-2025' ,username}),
   };
   try {
     await transporter.sendMail(msg);
@@ -145,6 +129,7 @@ export async function sendCancellationEmail(
     console.error('❌ [EMAIL] Error sending cancellation email:', error);
   }
 }
+
 export async function sendExpirationEmail(
   shopDomain: string,
   plan: string

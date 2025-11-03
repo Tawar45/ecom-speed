@@ -1,8 +1,10 @@
 import { Form, useActionData, useLoaderData, useLocation, useNavigation, useNavigate } from "react-router";
+// app/routes/app.pricing.tsx
+import { plans } from "../data/plans";
 import { authenticate } from "../shopify.server";
 import createApp from '@shopify/app-bridge';
 import { Redirect } from '@shopify/app-bridge/actions';
-import { useEffect, useState } from 'react';
+import { useEffect, useState , useRef } from 'react';
 import { useFetcher } from "react-router";
 import { sendWelcomeEmail } from "../utils/email.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
@@ -10,8 +12,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const url = new URL(request.url);
-  const chargeId = url.searchParams.get("charge_id");
-  console.log(chargeId,'chargeId');
+  // const chargeId = url.searchParams.get("charge_id");
 
   const combinedQuery = `
     query {
@@ -51,38 +52,38 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const activeSubscriptions = data.data?.currentAppInstallation?.activeSubscriptions || [];
       // If there's an active subscription, inspect its status and optionally send a welcome email.
     const activeSubscription = activeSubscriptions.length > 0 ? activeSubscriptions[0] : null;
-    if (activeSubscription) {
+    // if (activeSubscription) {
       // Normalize status (Shopify may use 'ACTIVE', 'active', 'accepted', etc.)
-      const status = (activeSubscription.status ?? "").toString().toLowerCase();
+      // const status = (activeSubscription.status ?? "").toString().toLowerCase();
       // Decide which statuses you consider successful/final for sending welcome email
-      const successStatuses = ["active", "accepted", "paid", "success"];
+      // const successStatuses = ["active", "accepted", "paid", "success"];
 
-      if (successStatuses.includes(status) && chargeId) {
-        try {
-          // dynamic import so this module stays server-only
-          const { sendWelcomeEmail } = await import("../utils/email.server");
-          // Compose email fields
-          const shopDomain = session.shop; // e.g. "example-store.myshopify.com"
-          const planName = activeSubscription.name ?? "Your Plan";
-          const recivederEmail = data?.data?.shop.email
-          // Try to find a price/amount if present
-          let amount = 0;
-          try {
-            const lineItem = activeSubscription.lineItems?.[0];
-            amount = lineItem?.plan?.pricingDetails?.price?.amount ?? 0;
-          } catch (_) {
-            amount = 0;
-          }
-          const recipient = process.env.EMAIL_SUPPORT_TO; // fallback; replace with real recipient logic
-          await sendWelcomeEmail(shopDomain, planName, Number(amount),recivederEmail);
-          console.log(`[PRICING LOADER] Sent welcome email for ${shopDomain} plan=${planName} id=${activeSubscription.id}`);
-        } catch (emailErr) {
-          console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
-        }
-      } else {
-        console.log(`[PRICING LOADER] Subscription found but status="${activeSubscription.status}" — skipping welcome email.`);
-      }
-    }
+    //   if (successStatuses.includes(status) && chargeId) {
+    //     try {
+    //       // dynamic import so this module stays server-only
+    //       const { sendWelcomeEmail } = await import("../utils/email.server");
+    //       // Compose email fields
+    //       const shopDomain = session.shop; // e.g. "example-store.myshopify.com"
+    //       const planName = activeSubscription.name ?? "Your Plan";
+    //       const recivederEmail = data?.data?.shop.email
+    //       // Try to find a price/amount if present
+    //       let amount = 0;
+    //       try {
+    //         const lineItem = activeSubscription.lineItems?.[0];
+    //         amount = lineItem?.plan?.pricingDetails?.price?.amount ?? 0;
+    //       } catch (_) {
+    //         amount = 0;
+    //       }
+    //       const recipient = process.env.EMAIL_SUPPORT_TO; // fallback; replace with real recipient logic
+    //       await sendWelcomeEmail(shopDomain, planName, Number(amount),recivederEmail);
+    //       console.log(`[PRICING LOADER] Sent welcome email for ${shopDomain} plan=${planName} id=${activeSubscription.id}`);
+    //     } catch (emailErr) {
+    //       console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
+    //     }
+    //   } else {
+    //     console.log(`[PRICING LOADER] Subscription found but status="${activeSubscription.status}" — skipping welcome email.`);
+    //   }
+    // }
 
     return {
       admin,
@@ -179,6 +180,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function PricingPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const fetcher = useFetcher();
   const isSubmitting = fetcher.state === "submitting";
@@ -209,6 +212,28 @@ export default function PricingPage() {
     }
   }, [location.search]);
 
+  const handleCancelClick = (event: any) => {
+    event.preventDefault(); // Prevent form auto-submit
+    setShowConfirm(true);
+  };
+  // Confirm cancellation and submit
+  const handleConfirmCancel = () => {
+    setShowConfirm(false);
+    if (formRef.current) {
+      const formData = new FormData(formRef.current);
+      fetcher.submit(formData, {
+        method: "post",
+        action: "/app/billing/cancel",
+      });
+    }
+  };
+
+  // Close popup
+  const handleClosePopup = () => {
+    setShowConfirm(false);
+  };
+
+  
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const loaderData = useLoaderData<typeof loader>();
@@ -239,27 +264,6 @@ export default function PricingPage() {
     currentPlan = subscriptionName.replace(' plan', '').trim();
   }
 
-  const plans = [
-    {
-      name: "Basic",
-      price: 10,
-      plan: "basic",
-      features: ["Basic features", "Email support", "Standard analytics"]
-    },
-    {
-      name: "Pro",
-      price: 20,
-      plan: "pro",
-      features: ["All Basic features", "Priority support", "Advanced analytics", "API access"]
-    },
-    {
-      name: "Business",
-      price: 30,
-      plan: "business",
-      features: ["All Pro features", "24/7 support", "Custom integrations", "White-label options"]
-    }
-  ];
-
   if (actionData?.confirmationUrl) {
     return (
       <s-page heading="Redirecting to Payment">
@@ -276,76 +280,125 @@ export default function PricingPage() {
   console.log(currentPlan,'planId');
   return (
     <s-page heading="Choose Your Plan">
-      <s-section heading="Pricing Plans">
-        {actionData?.error && (
-          <s-banner tone="critical">
-            <s-paragraph>Error: {actionData.error}</s-paragraph>
-          </s-banner>
-        )}
+    <s-section heading="Pricing Plans">
+      {/* Error Banner */}
+      {actionData?.error && (
+        <s-banner tone="critical">
+          <s-paragraph>Error: {actionData.error}</s-paragraph>
+        </s-banner>
+      )}
 
-        {activeSubscription && (
-          <>
-            <s-banner tone="success">
-              <s-paragraph>
-                <strong>Current Plan:</strong> {activeSubscription.name} (${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
-              </s-paragraph>
-            </s-banner>
-
-            <fetcher.Form method="post" action="/app/billing/cancel">
-              <div style={{ marginTop: "1rem", display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                <s-button
-                  type="submit"
-                  variant="primary"
-                  tone="critical"
-                  loading={isSubmitting}
-                  disabled={isSubmitting}
-                >
-                  Yes, Cancel Subscription
-                </s-button>
+      {/* Current Plan Banner with Cancel Button (side by side) */}
+      {activeSubscription && (
+        <s-banner >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "0.5rem",
+              background: "none"
+              
+            }}
+          >
+            <s-paragraph>
+              <div style={{background:"none"}}>
+              <strong>Current Plan:</strong> {activeSubscription.name} (
+              ${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
               </div>
-            </fetcher.Form>
-          </>
-        )}
+            </s-paragraph>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
-          {plans.map((plan) => {
-            const isActive = isActivePlan(plan.plan);
-            const isSubmittingThisPlan = navigation.state === "submitting" && loadingPlan === plan.plan;
-            return (
-              <div
-                key={plan.plan}
+            <fetcher.Form method="post" action="/app/billing/cancel" ref={formRef}>
+              <s-button type="button" variant="primary" tone="critical" loading={isSubmitting} disabled={isSubmitting}
+                onClick={handleCancelClick}>
+                Yes, Cancel Subscription
+              </s-button>
+          </fetcher.Form>
+
+      {/* Confirmation Popup */}
+      {showConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: "8px",
+              padding: "20px",
+              width: "400px",
+              boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
+            }}
+          >
+            <h3>Confirm Cancellation</h3>
+            <p>Are you sure you want to cancel your subscription?</p>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
+              <button onClick={handleClosePopup} style={{cursor: "pointer"}}>No, Go Back</button>
+              <button
+                onClick={handleConfirmCancel}
                 style={{
-                  position: "relative",
-                  border: isActive ? "2px solid #008060" : "1px solid #e1e8ed",
-                  borderRadius: "8px",
-                  padding: "0"
+                  background: "#c53030",
+                  color: "white",
+                  border: "none",
+                  padding: "8px 12px",
+                  borderRadius: "4px",
+                  cursor: "pointer"
                 }}
               >
-                {isActive && (
-                  <div style={{
-                    position: "absolute",
-                    top: "1rem",
-                    right: "1rem",
-                    background: "#008060",
-                    color: "white",
-                    padding: "0.25rem 0.75rem",
-                    borderRadius: "12px",
-                    fontSize: "0.875rem",
-                    fontWeight: "bold",
-                    zIndex: 1
-                  }}>
-                    Current Plan
+                {isSubmitting ? "Cancelling..." : "Yes, Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+          </div>
+        </s-banner>
+      )}
+      {/* Pricing Plan Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",gap: "0.5rem",marginTop: "1rem",}}>
+        {plans.map((plan) => {
+          const isActive = isActivePlan(plan.plan);
+
+          const isSubmittingThisPlan = navigation.state === "submitting" && loadingPlan === plan.plan;
+          return (
+            <div key={plan.plan} style={{ position: "relative",backgroundColor: "#fff",
+                border: isActive? "2px solid #ddd": "1px solid #ddd",
+                borderRadius: "8px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                paddingLeft: "15px",
+                width:"250px",
+                height:"300px",
+              }}
+            >
+              <s-section>
+                <div style={{ textAlign: "center" }}>
+                  <h2 style={{ fontSize: "1rem", fontWeight: "600",color: "#333",letterSpacing: "0.5px",}}>
+                    {plan.name}
+                  </h2>
+                </div>
+
+                {/* Price */}
+                <s-paragraph>
+                  <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                    <strong style={{ fontSize: "2rem", fontWeight: "700",}}>
+                      ${plan.price}
+                    </strong>
+                    <span style={{fontSize: "0.9rem",color: "#666",marginLeft: "2px",}}>
+                      /mo
+                    </span>
                   </div>
-                )}
-                <s-section heading={plan.name}>
-                  <s-paragraph>
-                    <strong>${plan.price}/month</strong>
-                  </s-paragraph>
-                  <s-unordered-list>
-                    {plan.features.map((feature, index) => (
-                      <s-list-item key={index}>{feature}</s-list-item>
-                    ))}
-                  </s-unordered-list>
+                </s-paragraph>
+                {/* Subscribe Button */}
+                <div style={{ textAlign: "center", marginBottom: "1.2rem" }}>
                   <Form method="post" onSubmit={() => setLoadingPlan(plan.plan)} >
                     <input type="hidden" name="plan" value={plan.plan} />
                     <input type="hidden" name="price" value={plan.price} />
@@ -356,13 +409,31 @@ export default function PricingPage() {
                     disabled={isSubmittingThisPlan || isActive}>
                     {isActive ? "Current Plan" : `Subscribe to ${plan.name}`}
                   </s-button>
-                </Form>
-                </s-section>
-              </div>
-            );
-          })}
-        </div>
-      </s-section>
-    </s-page>
+                  </Form>
+                </div>
+                <s-unordered-list>
+                  {plan.features.map((feature, index) => (
+                    <s-list-item key={index}>
+                      <div
+                        style={{
+                          backgroundColor:"#F5F5F5",
+                          borderRadius: "8px",
+                          marginTop: "0.4rem",
+                          textAlign: "left",
+                          padding:"8px 12px",
+                        }}
+                      >
+                        {feature}
+                      </div>
+                    </s-list-item>
+                  ))}
+                </s-unordered-list>  
+              </s-section>
+            </div>
+          );
+        })}
+      </div>
+    </s-section>
+  </s-page>
   );
 }
