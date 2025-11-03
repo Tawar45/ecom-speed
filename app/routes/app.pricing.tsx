@@ -74,15 +74,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           } catch (_) {
             amount = 0;
           }
-          // NOTE: determine recipient — you may want to derive the merchant email or use a support/owner email.
-          // If you have access to the merchant's email from session or another API, use that here.
           const recipient = process.env.EMAIL_SUPPORT_TO; // fallback; replace with real recipient logic
-
           await sendWelcomeEmail(shopDomain, planName, Number(amount),recivederEmail);
           console.log(`[PRICING LOADER] Sent welcome email for ${shopDomain} plan=${planName} id=${activeSubscription.id}`);
         } catch (emailErr) {
           console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
-          // Do NOT throw — loader should still return data even if email fails.
         }
       } else {
         console.log(`[PRICING LOADER] Subscription found but status="${activeSubscription.status}" — skipping welcome email.`);
@@ -202,7 +198,6 @@ export default function PricingPage() {
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
-            console.log('send mail');
             const newUrl = location.pathname;
             window.history.replaceState({}, "", newUrl);
           //  sendWelcomeEmail('export-dev.myshopify.com','basic plan',10); 
@@ -217,7 +212,6 @@ export default function PricingPage() {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const loaderData = useLoaderData<typeof loader>();
-  console.log(loaderData,'loaderData');
   useEffect(() => {
     const storeName = loaderData.shop?.replace('.myshopify.com', '');
     if (actionData?.confirmationUrl && loaderData.shopifyApiKey) {
@@ -235,15 +229,12 @@ export default function PricingPage() {
       redirect.dispatch(Redirect.Action.REMOTE, actionData.confirmationUrl);
     }
   }, [actionData?.confirmationUrl, loaderData.shopifyApiKey, location.search]);
-
   // Extract current active plan
   const activeSubscription = loaderData.activeSubscription;
   let currentPlan: string | null = null;
   if (activeSubscription) {
-    // Extract plan name from subscription (e.g., "Basic Plan" -> "basic")
     const subscriptionName = activeSubscription.name?.toLowerCase() || '';
     currentPlan = subscriptionName.replace(' plan', '').trim();
-    console.log("Current active plan:", currentPlan);
   }
 
   const plans = [
