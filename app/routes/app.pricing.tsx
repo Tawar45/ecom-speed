@@ -8,7 +8,6 @@ import { sendWelcomeEmail } from "../utils/email.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-
   const { admin, session } = await authenticate.admin(request);
   const url = new URL(request.url);
   const chargeId = url.searchParams.get("charge_id");
@@ -160,6 +159,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       console.error("❌ [PRICING ACTION] User errors:", data.data.appSubscriptionCreate.userErrors);
       return { error: data.data.appSubscriptionCreate.userErrors[0].message };
     }
+    console.log(data.data,'getting data by data');
+
     const confirmationUrl = data.data.appSubscriptionCreate.confirmationUrl;
     if (!confirmationUrl) {
       console.error("❌ [PRICING ACTION] No confirmation URL received");
@@ -177,18 +178,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function PricingPage() {
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
   const fetcher = useFetcher();
   const isSubmitting = fetcher.state === "submitting";
   const navigate = useNavigate();
   const location = useLocation();
-
   useEffect(() => {
     if (fetcher.data?.success) {
       navigate("/app/pricing");
     }
   }, [fetcher.data, navigate]);
-
-
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -212,6 +212,7 @@ export default function PricingPage() {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const loaderData = useLoaderData<typeof loader>();
+
   useEffect(() => {
     const storeName = loaderData.shop?.replace('.myshopify.com', '');
     if (actionData?.confirmationUrl && loaderData.shopifyApiKey) {
@@ -230,6 +231,7 @@ export default function PricingPage() {
     }
   }, [actionData?.confirmationUrl, loaderData.shopifyApiKey, location.search]);
   // Extract current active plan
+
   const activeSubscription = loaderData.activeSubscription;
   let currentPlan: string | null = null;
   if (activeSubscription) {
@@ -270,7 +272,8 @@ export default function PricingPage() {
   }
 
   const isActivePlan = (planId: string) => currentPlan === planId;
-
+  console.log(isActivePlan,'isActivePlan');
+  console.log(currentPlan,'planId');
   return (
     <s-page heading="Choose Your Plan">
       <s-section heading="Pricing Plans">
@@ -307,6 +310,7 @@ export default function PricingPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
           {plans.map((plan) => {
             const isActive = isActivePlan(plan.plan);
+            const isSubmittingThisPlan = navigation.state === "submitting" && loadingPlan === plan.plan;
             return (
               <div
                 key={plan.plan}
@@ -342,18 +346,17 @@ export default function PricingPage() {
                       <s-list-item key={index}>{feature}</s-list-item>
                     ))}
                   </s-unordered-list>
-                  <Form method="post">
+                  <Form method="post" onSubmit={() => setLoadingPlan(plan.plan)} >
                     <input type="hidden" name="plan" value={plan.plan} />
                     <input type="hidden" name="price" value={plan.price} />
                     <s-button
-                      type="submit"
-                      variant={isActive ? "secondary" : "primary"}
-                      loading={navigation.state === "submitting"}
-                      disabled={navigation.state === "submitting" || isActive}
-                    >
-                      {isActive ? "Current Plan" : `Subscribe to ${plan.name}`}
-                    </s-button>
-                  </Form>
+                    type="submit"
+                    variant={isActive ? "secondary" : "primary"}
+                    loading={isSubmittingThisPlan}
+                    disabled={isSubmittingThisPlan || isActive}>
+                    {isActive ? "Current Plan" : `Subscribe to ${plan.name}`}
+                  </s-button>
+                </Form>
                 </s-section>
               </div>
             );
