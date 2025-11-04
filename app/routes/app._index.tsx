@@ -9,12 +9,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   try {
     const { session } = await authenticate.admin(request);
   
-    // console.log(" [DASHBOARD] Authentication successful");
-    // console.log(" [DASHBOARD] Session data:", {
-    //   shop: session?.shop,
-    //   accessToken: session?.accessToken ? "***" + session.accessToken.slice(-4) : "none",
-    //   isOnline: session?.isOnline
-    // });
+    console.log(" [DASHBOARD] Authentication successful");
+    console.log(" [DASHBOARD] Session data:", {
+      shop: session?.shop,
+      accessToken: session?.accessToken ? "***" + session.accessToken.slice(-4) : "none",
+      isOnline: session?.isOnline
+    });
     
     // Get or create shop record
     console.log(" [DASHBOARD] Looking up shop in database...");

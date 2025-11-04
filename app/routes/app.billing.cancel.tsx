@@ -29,6 +29,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const data = await response.json();
     console.log(" ----> [BILLING CANCEL API query] GraphQL response:", data);
     let username = data?.data?.shop.name;
+    let recipientEmail = data?.data?.shop.email;
     const activeSubscriptions = data?.data?.currentAppInstallation?.activeSubscriptions || [];
     if (activeSubscriptions.length === 0) {
       return new Response(JSON.stringify({ error: "No active subscription found" }), {
@@ -78,7 +79,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       if (cancelledSubscription) {
         try {
-          await sendCancellationEmail(session.shop, cancelledSubscription.plan ,username);
+          await sendCancellationEmail(session.shop, cancelledSubscription.plan ,username, recipientEmail);
         } catch (err) {
           console.error("Failed to send cancellation email:", err);
         }

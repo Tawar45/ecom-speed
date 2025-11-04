@@ -105,18 +105,18 @@ The Team
 export async function sendCancellationEmail(
   shopDomain: string,
   plan: string,
-  username:string
+  username:string,
+  recipientEmail:string
 ): Promise<void> {
   if (!process.env.SMTP_FROM_EMAIL) {
     console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping cancellation email');
     return;
   }
-
   const planNames = { basic: 'Basic', pro: 'Pro', business: 'Business' };
   const planName = planNames[plan as keyof typeof planNames] || plan;
 
   const msg = {
-    to: `rohit45.tawar@gmail.com`,
+    to: recipientEmail,
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Subscription Cancelled - ${planName} Plan`,
     html: cancellationEmailTemplate({shopName:shopDomain, planName, cancelDate: '26-12-2025' ,username}),

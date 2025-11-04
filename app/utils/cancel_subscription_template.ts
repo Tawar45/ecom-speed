@@ -4,7 +4,7 @@ export function cancellationEmailTemplate({
     shopName,
     planName,
     cancelDate,
-    username
+    username,
   }: {
     shopName: string;
     planName: string;
