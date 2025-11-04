@@ -1,10 +1,7 @@
 // utils/emailTemplates.ts
 
-export function welcomeEmailTemplate({shopName,planName,cancelDate,username}: {
+export function welcomeEmailTemplate({shopName}: {
     shopName: string;
-    planName: string;
-    cancelDate?: string;
-    username?: string;
   }) {
 return `
 <!DOCTYPE html>

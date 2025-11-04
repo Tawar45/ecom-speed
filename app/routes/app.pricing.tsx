@@ -12,7 +12,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const url = new URL(request.url);
-  // const chargeId = url.searchParams.get("charge_id");
+  const chargeId = url.searchParams.get("charge_id");
 
   const combinedQuery = `
     query {
@@ -52,38 +52,38 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const activeSubscriptions = data.data?.currentAppInstallation?.activeSubscriptions || [];
       // If there's an active subscription, inspect its status and optionally send a welcome email.
     const activeSubscription = activeSubscriptions.length > 0 ? activeSubscriptions[0] : null;
-    // if (activeSubscription) {
-      // Normalize status (Shopify may use 'ACTIVE', 'active', 'accepted', etc.)
-      // const status = (activeSubscription.status ?? "").toString().toLowerCase();
-      // Decide which statuses you consider successful/final for sending welcome email
-      // const successStatuses = ["active", "accepted", "paid", "success"];
+    if (activeSubscription) {
+     // Normalize status (Shopify may use 'ACTIVE', 'active', 'accepted', etc.)
+      const status = (activeSubscription.status ?? "").toString().toLowerCase();
+     // Decide which statuses you consider successful/final for sending welcome email
+      const successStatuses = ["active", "accepted", "paid", "success"];
 
-    //   if (successStatuses.includes(status) && chargeId) {
-    //     try {
-    //       // dynamic import so this module stays server-only
-    //       const { sendWelcomeEmail } = await import("../utils/email.server");
-    //       // Compose email fields
-    //       const shopDomain = session.shop; // e.g. "example-store.myshopify.com"
-    //       const planName = activeSubscription.name ?? "Your Plan";
-    //       const recivederEmail = data?.data?.shop.email
-    //       // Try to find a price/amount if present
-    //       let amount = 0;
-    //       try {
-    //         const lineItem = activeSubscription.lineItems?.[0];
-    //         amount = lineItem?.plan?.pricingDetails?.price?.amount ?? 0;
-    //       } catch (_) {
-    //         amount = 0;
-    //       }
-    //       const recipient = process.env.EMAIL_SUPPORT_TO; // fallback; replace with real recipient logic
-    //       await sendWelcomeEmail(shopDomain, planName, Number(amount),recivederEmail);
-    //       console.log(`[PRICING LOADER] Sent welcome email for ${shopDomain} plan=${planName} id=${activeSubscription.id}`);
-    //     } catch (emailErr) {
-    //       console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
-    //     }
-    //   } else {
-    //     console.log(`[PRICING LOADER] Subscription found but status="${activeSubscription.status}" — skipping welcome email.`);
-    //   }
-    // }
+      if (successStatuses.includes(status) && chargeId) {
+        try {
+          // dynamic import so this module stays server-only
+          const { sendWelcomeEmail } = await import("../utils/email.server");
+          // Compose email fields
+          const shopDomain = session.shop; // e.g. "example-store.myshopify.com"
+          const planName = activeSubscription.name ?? "Your Plan";
+          const recivederEmail = data?.data?.shop.email
+          // Try to find a price/amount if present
+          let amount = 0;
+          try {
+            const lineItem = activeSubscription.lineItems?.[0];
+            amount = lineItem?.plan?.pricingDetails?.price?.amount ?? 0;
+          } catch (_) {
+            amount = 0;
+          }
+          const recipient = process.env.EMAIL_SUPPORT_TO; // fallback; replace with real recipient logic
+          await sendWelcomeEmail(shopDomain, planName, Number(amount), recivederEmail);
+          console.log(`[PRICING LOADER] Sent welcome email for ${shopDomain} plan=${planName} id=${activeSubscription.id}`);
+        } catch (emailErr) {
+          console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
+        }
+      } else {
+        console.log(`[PRICING LOADER] Subscription found but status="${activeSubscription.status}" — skipping welcome email.`);
+      }
+    }
 
     return {
       admin,
