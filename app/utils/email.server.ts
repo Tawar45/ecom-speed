@@ -49,7 +49,7 @@ export async function sendWelcomeEmail(
   };
 const planName = planNames[plan as keyof typeof planNames] || plan;
   const msg = {
-    to: 'rohit45.tawar@gmail.com',
+    to: recivederEmail,  //'rohit45.tawar@gmail.com',
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Welcome to ${planName} Plan!`,
     html: welcomeEmailTemplate({shopName:shopDomain,}),
