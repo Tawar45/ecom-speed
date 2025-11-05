@@ -2,6 +2,7 @@ import { useLoaderData } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import  Header from "../component/header";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   console.log(" [DASHBOARD] Loading dashboard data...");
@@ -179,12 +180,13 @@ export default function Index() {
   const { shop } = useLoaderData<typeof loader>();
 
   return (
+    <>
     <s-page heading="Dashboard">
       <s-section heading="Welcome to your app">
         <s-paragraph>
           This is your app dashboard. Here you can manage your subscription and access all features.
         </s-paragraph>
-        
+
         {shop?.subscription ? (
           <s-section heading="Current Subscription">
             <s-paragraph>
@@ -220,5 +222,6 @@ export default function Index() {
         )}
       </s-section>
     </s-page>
+    </>
   );
 }
