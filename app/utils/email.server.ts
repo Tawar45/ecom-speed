@@ -1,6 +1,5 @@
 import {cancellationEmailTemplate } from "../utils/cancel_subscription_template";
-import {welcomeEmailTemplate } from "../utils/welcome_template";
-
+// import {welcomeEmailTemplate } from "../utils/welcome_template";
 import nodemailer from 'nodemailer';
 import { welcomeEmailTemplate } from "./welcome_template";
 export interface WelcomeEmailData {
@@ -8,6 +7,7 @@ export interface WelcomeEmailData {
   plan: string;
   price: number;
   recivederEmail:string;
+  planName:string;
 }
 // ✅ Create a reusable SMTP transporter
 const transporter = nodemailer.createTransport({
@@ -32,7 +32,8 @@ transporter.verify((error, success) => {
 export async function sendWelcomeEmailInstalledMaill(
 
   shopName: string,
-  recipientEmail: string
+  recipientEmail: string,
+  planName:string,
 ) {
   console.log('📧 [EMAIL] Starting app install welcome email process...');
   if (!process.env.SMTP_FROM_EMAIL) {
@@ -48,8 +49,6 @@ export async function sendWelcomeEmailInstalledMaill(
     html: welcomeEmailTemplate({
       shopName: "Coffee Haven",
       planName: "Premium",
-      username: "Alice",
-      cancelDate: "2025-12-31",
     })
   };
   try {
@@ -84,7 +83,7 @@ export async function sendWelcomeEmail(
     to: recivederEmail,  //'rohit45.tawar@gmail.com',
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Welcome to ${planName} Plan!`,
-    html: welcomeEmailTemplate({shopName:shopDomain,}),
+    html: welcomeEmailTemplate({shopName:shopDomain, planName:'planName'}),
   };
 
   try {

@@ -1,7 +1,8 @@
 // utils/emailTemplates.ts
 
-export function welcomeEmailTemplate({shopName}: {
+export function welcomeEmailTemplate({shopName , planName}: {
     shopName: string;
+    planName:string;
   }) {
 return `
 <!DOCTYPE html>
