@@ -33,7 +33,6 @@ export async function sendWelcomeEmailInstalledMaill(
 
   shopName: string,
   recipientEmail: string,
-  planName:string,
 ) {
   console.log('📧 [EMAIL] Starting app install welcome email process...');
   if (!process.env.SMTP_FROM_EMAIL) {

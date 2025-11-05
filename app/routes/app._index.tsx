@@ -2,19 +2,13 @@ import { useLoaderData } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-<<<<<<< HEAD
-import  Header from "../component/header";
-
-=======
 import { sendWelcomeEmailInstalledMaill } from "../utils/email.server";
 // import ThemeToggle from "./dashboard.theme-toggle";  
->>>>>>> c0d2db19642233d97d71c0acbc7fbebcf5f4a1f0
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   console.log(" [DASHBOARD] Loading dashboard data...");
   
   try {
     const { session } = await authenticate.admin(request);
-  
     console.log(" [DASHBOARD] Authentication successful");
     console.log(" [DASHBOARD] Session data:", {
       shop: session?.shop,
