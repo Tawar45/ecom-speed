@@ -1,5 +1,6 @@
 import { cancellationEmailTemplate } from "../utils/cancel_subscription_template";
 import nodemailer from 'nodemailer';
+import { welcomeEmailTemplate } from "./welcome_template";
 export interface WelcomeEmailData {
   shopDomain: string;
   plan: string;
@@ -25,6 +26,37 @@ transporter.verify((error, success) => {
   }
 });
 
+export async function sendWelcomeEmailInstalledMaill(
+
+  shopName: string,
+  recipientEmail: string
+) {
+  console.log('📧 [EMAIL] Starting app install welcome email process...');
+  if (!process.env.SMTP_FROM_EMAIL) {
+    console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping cancellation email');
+    return;
+  }
+
+
+  const msg = {
+    to: recipientEmail,
+    from: process.env.SMTP_FROM_EMAIL,
+    subject: `Welcome - ${shopName} Plan`,
+    html: welcomeEmailTemplate({
+      shopName: "Coffee Haven",
+      planName: "Premium",
+      username: "Alice",
+      cancelDate: "2025-12-31",
+    })
+  };
+  try {
+    await transporter.sendMail(msg);
+    console.log(`✅ [EMAIL] Wrlcome email sent successfully to ${shopName}`);
+  } catch (error) {
+    console.error('❌ [EMAIL] Error sending cancellation email:', error);
+  }
+
+}
 export async function sendWelcomeEmail(
   shopDomain: string,
   plan: string,
@@ -43,7 +75,7 @@ export async function sendWelcomeEmail(
     pro: 'Pro',
     business: 'Business',
   };
-const planName = planNames[plan as keyof typeof planNames] || plan;
+  const planName = planNames[plan as keyof typeof planNames] || plan;
   const msg = {
     to: 'rohit45.tawar@gmail.com',
     from: process.env.SMTP_FROM_EMAIL,
@@ -105,8 +137,8 @@ The Team
 export async function sendCancellationEmail(
   shopDomain: string,
   plan: string,
-  username:string,
-  recipientEmail:string
+  username: string,
+  recipientEmail: string
 ): Promise<void> {
   if (!process.env.SMTP_FROM_EMAIL) {
     console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping cancellation email');
@@ -119,7 +151,7 @@ export async function sendCancellationEmail(
     to: recipientEmail,
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Subscription Cancelled - ${planName} Plan`,
-    html: cancellationEmailTemplate({shopName:shopDomain, planName, cancelDate: '26-12-2025' ,username}),
+    html: cancellationEmailTemplate({ shopName: shopDomain, planName, cancelDate: '26-12-2025', username }),
   };
   try {
     await transporter.sendMail(msg);
