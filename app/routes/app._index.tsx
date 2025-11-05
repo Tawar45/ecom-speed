@@ -2,8 +2,13 @@ import { useLoaderData } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+<<<<<<< HEAD
 import  Header from "../component/header";
 
+=======
+import { sendWelcomeEmailInstalledMaill } from "../utils/email.server";
+// import ThemeToggle from "./dashboard.theme-toggle";  
+>>>>>>> c0d2db19642233d97d71c0acbc7fbebcf5f4a1f0
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   console.log(" [DASHBOARD] Loading dashboard data...");
   
@@ -30,7 +35,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     });
 
     if (!shop) {
-      console.log(" [DASHBOARD] Creating new shop record...");
+
       shop = await (prisma as any).shop.create({
         data: {
           domain: session.shop,
@@ -38,6 +43,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         }
       });
       console.log(" [DASHBOARD] Shop created:", { id: shop.id, domain: shop.domain });
+
+
+      // welcome email login 
+      console.log("----> [AUTH CALLBACK] Checking welcome email status for shop:", session.shop, shop);
+      if (!shop?.welcomeEmailSent) {
+        //  Send email
+        sendWelcomeEmailInstalledMaill(session.shop, session.shop).catch(err => {
+          console.error(" [DASHBOARD] Failed to send welcome email:", err);
+        });
+        //  Use correct upsert shape
+        await prisma.shop.update({
+          where: { domain: session.shop }, // use `domain` field
+          data: { welcomeEmailSent: true, accessToken: session.accessToken },
+
+        });
+      }
+
     } else {
       console.log(" [DASHBOARD] Updating shop access token...");
       await (prisma as any).shop.update({
@@ -183,6 +205,7 @@ export default function Index() {
     <>
     <s-page heading="Dashboard">
       <s-section heading="Welcome to your app">
+      {/* <ThemeToggle /> */}
         <s-paragraph>
           This is your app dashboard. Here you can manage your subscription and access all features.
         </s-paragraph>
