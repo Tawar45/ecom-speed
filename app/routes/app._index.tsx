@@ -3,6 +3,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { sendWelcomeEmailInstalledMaill } from "../utils/email.server";
+import PromoVideo from "app/component/promoVideo";
 // import ThemeToggle from "./dashboard.theme-toggle";  
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   console.log(" [DASHBOARD] Loading dashboard data...");
@@ -198,11 +199,14 @@ export default function Index() {
   return (
     <>
     <s-page heading="Dashboard">
+
       <s-section heading="Welcome to your app">
       {/* <ThemeToggle /> */}
         <s-paragraph>
           This is your app dashboard. Here you can manage your subscription and access all features.
         </s-paragraph>
+        
+        <PromoVideo/>
 
         {shop?.subscription ? (
           <s-section heading="Current Subscription">

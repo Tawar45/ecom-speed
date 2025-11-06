@@ -32,6 +32,7 @@
     "@sendgrid/mail": "^8.1.6",
     "@shopify/app-bridge": "^3.7.10",
     "@shopify/app-bridge-react": "^4.2.7",
+    "@shopify/polaris": "^13.9.5",
     "@shopify/shopify-app-react-router": "^1.0.0",
     "@shopify/shopify-app-session-storage-prisma": "^7.0.0",
     "@types/nodemailer": "^7.0.3",
