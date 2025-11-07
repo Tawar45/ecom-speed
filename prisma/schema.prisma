@@ -38,6 +38,8 @@ model Shop {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   subscriptions Subscription[]
+  welcomeEmailSent  Boolean @default(false)
+
 }
 
 model Subscription {

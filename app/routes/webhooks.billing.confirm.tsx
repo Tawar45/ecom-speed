@@ -16,7 +16,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       shop,
       hasPayload: !!payload
     });
-
     // Parse the payload to get subscription details
     const subscriptionData = JSON.parse(payload as unknown as string);
     console.log(" [BILLING WEBHOOK] Subscription data:", subscriptionData);
@@ -85,7 +84,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // Send welcome email
     console.log(" [BILLING WEBHOOK] Sending welcome email...");
     try {
-      await sendWelcomeEmail(shop, plan, price);
+      const recipientEmail="rohit45.tawar@gmail.com";
+      await sendWelcomeEmail(shop, plan, price,recipientEmail);
       console.log(" [BILLING WEBHOOK] Welcome email sent successfully");
     } catch (emailError) {
       console.error(" [BILLING WEBHOOK] Failed to send welcome email:", emailError);

@@ -10,6 +10,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // Step 1: Get active subscriptions from Shopify
     const query = `
       query {
+      shop {
+        id
+        name
+        email
+        myshopifyDomain
+      }
         currentAppInstallation {
           activeSubscriptions {
             id
@@ -22,7 +28,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const response = await admin.graphql(query);
     const data = await response.json();
     console.log(" ----> [BILLING CANCEL API query] GraphQL response:", data);
-
+    let username = data?.data?.shop.name;
+    let recipientEmail = data?.data?.shop.email;
     const activeSubscriptions = data?.data?.currentAppInstallation?.activeSubscriptions || [];
     if (activeSubscriptions.length === 0) {
       return new Response(JSON.stringify({ error: "No active subscription found" }), {
@@ -30,7 +37,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         headers: { "Content-Type": "application/json" },
       });
     }
-
     const subscriptionId = activeSubscriptions[0].id;
 
     // Step 2: Cancel the subscription
@@ -73,7 +79,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       if (cancelledSubscription) {
         try {
-          await sendCancellationEmail(session.shop, cancelledSubscription.plan);
+          await sendCancellationEmail(session.shop, cancelledSubscription.plan ,username, recipientEmail);
         } catch (err) {
           console.error("Failed to send cancellation email:", err);
         }

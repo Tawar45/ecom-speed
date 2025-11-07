@@ -1,8 +1,13 @@
+import {cancellationEmailTemplate } from "../utils/cancel_subscription_template";
+// import {welcomeEmailTemplate } from "../utils/welcome_template";
 import nodemailer from 'nodemailer';
+import { welcomeEmailTemplate } from "./welcome_template";
 export interface WelcomeEmailData {
   shopDomain: string;
   plan: string;
   price: number;
+  recivederEmail:string;
+  planName:string;
 }
 // ✅ Create a reusable SMTP transporter
 const transporter = nodemailer.createTransport({
@@ -24,10 +29,40 @@ transporter.verify((error, success) => {
   }
 });
 
+export async function sendWelcomeEmailInstalledMaill(
+
+  shopName: string,
+  recipientEmail: string,
+) {
+  console.log('📧 [EMAIL] Starting app install welcome email process...');
+  if (!process.env.SMTP_FROM_EMAIL) {
+    console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping cancellation email');
+    return;
+  }
+
+
+  const msg = {
+    to: recipientEmail,
+    from: process.env.SMTP_FROM_EMAIL,
+    subject: `Welcome - ${shopName} Plan`,
+    html: welcomeEmailTemplate({
+      shopName: "Coffee Haven",
+      planName: "Premium",
+    })
+  };
+  try {
+    await transporter.sendMail(msg);
+    console.log(`✅ [EMAIL] Wrlcome email sent successfully to ${shopName}`);
+  } catch (error) {
+    console.error('❌ [EMAIL] Error sending cancellation email:', error);
+  }
+
+}
 export async function sendWelcomeEmail(
   shopDomain: string,
   plan: string,
-  price: number
+  price: number,
+  recivederEmail:string
 ): Promise<void> {
   console.log('📧 [EMAIL] Starting welcome email process...');
   console.log('📧 [EMAIL] Email parameters:', { shopDomain, plan, price });
@@ -42,60 +77,12 @@ export async function sendWelcomeEmail(
     pro: 'Pro',
     business: 'Business',
   };
-
   const planName = planNames[plan as keyof typeof planNames] || plan;
-
   const msg = {
-    to: `rohit45.tawar@gmail.com`,
+    to: recivederEmail,  //'rohit45.tawar@gmail.com',
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Welcome to ${planName} Plan!`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #333;">Welcome to Your New Subscription!</h1>
-        <p>Hello,</p>
-        <p>Thank you for subscribing to our <strong>${planName} Plan</strong> for <strong>$${price}/month</strong>!</p>
-        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="margin-top: 0; color: #333;">Your Subscription Details:</h3>
-          <ul style="list-style: none; padding: 0;">
-            <li style="margin: 8px 0;"><strong>Plan:</strong> ${planName}</li>
-            <li style="margin: 8px 0;"><strong>Price:</strong> $${price}/month</li>
-            <li style="margin: 8px 0;"><strong>Shop:</strong> ${shopDomain}</li>
-          </ul>
-        </div>
-        <p>You now have access to all the features included in your plan. Here's what you can do next:</p>
-        
-        <ul>
-          <li>Access your dashboard to manage your subscription</li>
-          <li>Explore all the features available in your plan</li>
-          <li>Contact our support team if you need any assistance</li>
-        </ul>
-        
-        <div style="margin: 30px 0; text-align: center;">
-          <a href="${process.env.SHOPIFY_APP_URL}/app" 
-             style="background-color: #007cba; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
-            Go to Dashboard
-          </a>
-        </div>
-        <p>Best regards,<br>The Team</p>
-      </div>
-    `,
-    text: `
-Welcome to Your New Subscription!
-
-Hello,
-Thank you for subscribing to our ${planName} Plan for $${price}/month!
-
-Your Subscription Details:
-- Plan: ${planName}
-- Price: $${price}/month  
-- Shop: ${shopDomain}
-- Status: Active
-
-Go to Dashboard: ${process.env.SHOPIFY_APP_URL}/app
-
-Best regards,
-The Team
-    `,
+    html: welcomeEmailTemplate({shopName:shopDomain, planName:'planName'}),
   };
 
   try {
@@ -110,32 +97,22 @@ The Team
 
 export async function sendCancellationEmail(
   shopDomain: string,
-  plan: string
+  plan: string,
+  username: string,
+  recipientEmail: string
 ): Promise<void> {
   if (!process.env.SMTP_FROM_EMAIL) {
     console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping cancellation email');
     return;
   }
-
   const planNames = { basic: 'Basic', pro: 'Pro', business: 'Business' };
   const planName = planNames[plan as keyof typeof planNames] || plan;
 
   const msg = {
-    to: `rohit45.tawar@gmail.com`,
+    to: recipientEmail,
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Subscription Cancelled - ${planName} Plan`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #333;">Subscription Cancelled</h1>
-        <p>Your <strong>${planName} Plan</strong> subscription has been cancelled.</p>
-        <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <ul style="list-style: none; padding: 0;">
-            <li>Your subscription will remain active until the end of your billing period.</li>
-            <li>You can resubscribe anytime.</li>
-          </ul>
-        </div>
-      </div>
-    `,
+    html: cancellationEmailTemplate({ shopName: shopDomain, planName, cancelDate: '26-12-2025', username }),
   };
   try {
     await transporter.sendMail(msg);
@@ -144,6 +121,7 @@ export async function sendCancellationEmail(
     console.error('❌ [EMAIL] Error sending cancellation email:', error);
   }
 }
+
 export async function sendExpirationEmail(
   shopDomain: string,
   plan: string
