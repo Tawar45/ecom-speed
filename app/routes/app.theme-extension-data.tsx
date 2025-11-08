@@ -84,7 +84,7 @@ function removeComments(content: any) {
 
 
 
-// 2️⃣ Check if app embed is enabled inside settings_data.json
+// 2 Check if app embed is enabled inside settings_data.json
 function findEmbedInSettings(settingsContent: any, APP_HANDLE: any) {
   try {
     const settings = JSON.parse(settingsContent);

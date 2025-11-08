@@ -43,7 +43,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 
       // welcome email login 
-      console.log("----> [AUTH CALLBACK] Checking welcome email status for shop:", session.shop, shop);
       if (!shop?.welcomeEmailSent) {
         //  Send email
         sendWelcomeEmailInstalledMaill(session.shop, session.shop).catch(err => {
@@ -63,7 +62,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         where: { id: shop.id },
         data: { accessToken: session.accessToken }
       });
-      console.log(" [DASHBOARD] Shop updated:", { id: shop.id, domain: shop.domain });
     }
 
     // Check for pending subscriptions and activate them
@@ -81,7 +79,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         where: { id: pendingSubscription.id },
         data: { status: "active" }
       });
-      console.log(" [DASHBOARD] Pending subscription activated:", { id: pendingSubscription.id });
     }
 
     // If no active subscription in database, check Shopify for active subscriptions
@@ -146,7 +143,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
               status: "active"
             }
           });
-          console.log(" [DASHBOARD] Subscription created from Shopify data:", { id: newSubscription.id });
         }
       } catch (error) {
         console.error(" [DASHBOARD] Failed to check Shopify subscriptions:", error);
@@ -235,16 +231,13 @@ export default function Index() {
 
           if (data.success && data.embedEnabled.settings) {
             // Safely update state
-            console.log("Embed enabled data from response:", data.embedEnabled.settings);
             // setEmbededApp(data.embedEnabled.settings || {});
 
             const embededValue = data?.embedEnabled?.settings[getFirstKey(data.embedEnabled.settings || {})];
-            console.log("Embeded app value found:", embededValue);
             if (typeof embededValue === 'boolean') {
               setEmbededApp(embededValue);
 
               if (data.embedEnabled && data.embedEnabled.type) {
-                console.log("Embed enabled type:", data.embedEnabled.type);
                 setExtensionId(extractEmbededAppId(data.embedEnabled.type));
                 setEmbededAppName(extractBlockType(data.embedEnabled.type));
               } else {
@@ -263,16 +256,16 @@ export default function Index() {
             if (main) setThemeId(main.id.split("/").pop());
           }
         } else {
-          console.error("❌ Failed to fetch theme toggle data:", data);
+          console.error(" Failed to fetch theme toggle data:", data);
         }
       } catch (error) {
-        console.error("⚠️ Error fetching theme toggle data:", error);
+        console.error(" Error fetching theme toggle data:", error);
       } finally {
         setLoadingThemes(false);
       }
     };
     console.log("Fetching theme data for dashboard...");
-    fetchThemeData(); // 👈 run the async function 
+    fetchThemeData(); //  run the async function 
   }, []);
 
   console.log("-----> Extension ID and embeded app status:", extensionId, embededApp, themes, themeId);
