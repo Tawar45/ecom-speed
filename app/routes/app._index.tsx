@@ -3,19 +3,22 @@ import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { sendWelcomeEmailInstalledMaill } from "../utils/email.server";
-// import ThemeToggle from "./dashboard.theme-toggle";  
+import { useEffect, useState } from "react";
+import { d } from "node_modules/@react-router/dev/dist/routes-CZR-bKRt";
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   console.log(" [DASHBOARD] Loading dashboard data...");
-  
+
   try {
     const { session } = await authenticate.admin(request);
+
     console.log(" [DASHBOARD] Authentication successful");
     console.log(" [DASHBOARD] Session data:", {
       shop: session?.shop,
       accessToken: session?.accessToken ? "***" + session.accessToken.slice(-4) : "none",
       isOnline: session?.isOnline
     });
-    
+
     // Get or create shop record
     console.log(" [DASHBOARD] Looking up shop in database...");
     let shop = await (prisma as any).shop.findUnique({
@@ -40,7 +43,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 
       // welcome email login 
-      console.log("----> [AUTH CALLBACK] Checking welcome email status for shop:", session.shop, shop);
       if (!shop?.welcomeEmailSent) {
         //  Send email
         sendWelcomeEmailInstalledMaill(session.shop, session.shop).catch(err => {
@@ -60,14 +62,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         where: { id: shop.id },
         data: { accessToken: session.accessToken }
       });
-      console.log(" [DASHBOARD] Shop updated:", { id: shop.id, domain: shop.domain });
     }
 
     // Check for pending subscriptions and activate them
     const pendingSubscription = await (prisma as any).subscription.findFirst({
-      where: { 
-        shopId: shop.id, 
-        status: "pending" 
+      where: {
+        shopId: shop.id,
+        status: "pending"
       },
       orderBy: { createdAt: "desc" }
     });
@@ -78,14 +79,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         where: { id: pendingSubscription.id },
         data: { status: "active" }
       });
-      console.log(" [DASHBOARD] Pending subscription activated:", { id: pendingSubscription.id });
     }
 
     // If no active subscription in database, check Shopify for active subscriptions
     const activeSubscriptions = await (prisma as any).subscription.findMany({
-      where: { 
-        shopId: shop.id, 
-        status: "active" 
+      where: {
+        shopId: shop.id,
+        status: "active"
       }
     });
 
@@ -93,7 +93,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       console.log(" [DASHBOARD] No active subscription in database, checking Shopify...");
       try {
         const { admin } = await authenticate.admin(request);
-        
+
         const query = `
           query {
             currentAppInstallation {
@@ -122,19 +122,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
         const response = await admin.graphql(query);
         const data = await response.json() as any;
-        
+
         if (data.data?.currentAppInstallation?.activeSubscriptions?.length > 0) {
           const shopifySubscription = data.data.currentAppInstallation.activeSubscriptions[0];
           const plan = shopifySubscription.name.toLowerCase().replace(" plan", "");
           const price = parseFloat(shopifySubscription.lineItems[0]?.plan?.pricingDetails?.price?.amount || "0");
-          
+
           console.log(" [DASHBOARD] Found active subscription in Shopify, creating database record...");
           console.log(" [DASHBOARD] Price conversion:", {
             original: shopifySubscription.lineItems[0]?.plan?.pricingDetails?.price?.amount,
             converted: price,
             type: typeof price
           });
-          
+
           const newSubscription = await (prisma as any).subscription.create({
             data: {
               shopId: shop.id,
@@ -143,7 +143,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
               status: "active"
             }
           });
-          console.log(" [DASHBOARD] Subscription created from Shopify data:", { id: newSubscription.id });
         }
       } catch (error) {
         console.error(" [DASHBOARD] Failed to check Shopify subscriptions:", error);
@@ -173,13 +172,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       } : null
     });
 
-    const result = { 
+    const result = {
       shop: shop ? {
         domain: shop.domain,
         subscription: shop.subscriptions[0] || null
       } : null
     };
-    
+
     console.log(" [DASHBOARD] Dashboard data loaded successfully");
     return result;
   } catch (error) {
@@ -192,14 +191,100 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 };
 
+function extractEmbededAppId(typeString: string | null): string | null {
+  if (!typeString || typeof typeString !== "string") return null;
+  const parts = typeString.split("/");
+  return parts[parts.length - 1] || null;
+}
+
+function extractBlockType(typeString: string | null): string | null {
+  if (!typeString || typeof typeString !== "string") return null;
+  const parts = typeString.split("/");
+  // The second last part is 'star_rating'
+  return parts.length >= 2 ? parts[parts.length - 2] : null;
+}
+
+function getFirstKey(obj: any) {
+  if (!obj || typeof obj !== "object") return '';
+  return Object.keys(obj)[0] || '';
+}
+
 export default function Index() {
   const { shop } = useLoaderData<typeof loader>();
+  const [themeId, setThemeId] = useState<string | null>(null);
+  const [embededApp, setEmbededApp] = useState<any>();
+  const [extensionId, setExtensionId] = useState<any>();
+  const [embededAppName, setEmbededAppName] = useState<string | null>();
+  const [themes, setThemes] = useState<any[]>([]);
+  const [loadingThemes, setLoadingThemes] = useState(true);
+  const embededAppId = import.meta.env.VITE_EMBEDED_APP_ID || "ecom_expert_speed";
 
+  useEffect(() => {
+    const fetchThemeData = async () => {
+      try {
+        const res = await fetch(`/app/theme-extension-data`);
+        const data = await res.json();
+
+
+        if (data.success) {
+          setThemes(data.themes);
+
+          if (data.success && data.embedEnabled.settings) {
+            // Safely update state
+            // setEmbededApp(data.embedEnabled.settings || {});
+
+            const embededValue = data?.embedEnabled?.settings[getFirstKey(data.embedEnabled.settings || {})];
+            if (typeof embededValue === 'boolean') {
+              setEmbededApp(embededValue);
+
+              if (data.embedEnabled && data.embedEnabled.type) {
+                setExtensionId(extractEmbededAppId(data.embedEnabled.type));
+                setEmbededAppName(extractBlockType(data.embedEnabled.type));
+              } else {
+                console.warn("No type found in embedEnabled data.");
+              }
+            }
+            console.log("Embeded App ID and its value:", embededValue);
+
+
+          } else {
+            console.warn("No embedEnabled found in response.");
+          }
+          if (data.themes?.length > 0) {
+            const main = data.themes.find((t: any) => t.role === "MAIN");
+            console.log("Active theme found-------------data---:", data);
+            if (main) setThemeId(main.id.split("/").pop());
+          }
+        } else {
+          console.error(" Failed to fetch theme toggle data:", data);
+        }
+      } catch (error) {
+        console.error(" Error fetching theme toggle data:", error);
+      } finally {
+        setLoadingThemes(false);
+      }
+    };
+    console.log("Fetching theme data for dashboard...");
+    fetchThemeData(); //  run the async function 
+  }, []);
+
+  console.log("-----> Extension ID and embeded app status:", extensionId, embededApp, themes, themeId);
+  const openEmbedSettings = () => {
+    if (!themeId || !shop?.domain || !embededAppName || !extensionId || !embededAppName) {
+      {
+        console.error("⚠️ Missing data to open embed settings:", { themeId, shopDomain: shop?.domain, embededAppName, extensionId });
+        return;
+      };
+    }
+console.log("Opening embed settings with data:", { themeId, shopDomain: shop?.domain, embededAppName, extensionId });
+    const url = `https://${shop?.domain}/admin/themes/current/editor?context=apps&activateAppId=${extensionId}/${embededAppName}`;
+    // const url = `https://${shop.domain}/admin/themes/${themeId}/editor?context=apps&activateAppId=${embeded_app_api_key}/${app_name}`;
+    window.open(url, "_blank");
+  };
   return (
     <>
     <s-page heading="Dashboard">
       <s-section heading="Welcome to your app">
-      {/* <ThemeToggle /> */}
         <s-paragraph>
           This is your app dashboard. Here you can manage your subscription and access all features.
         </s-paragraph>
@@ -237,6 +322,78 @@ export default function Index() {
             </s-button>
           </s-section>
         )}
+
+        {/* <s-section heading="Theme Store App Embed">
+          {loadingThemes ? (
+            <div>Loading themes...</div>
+          ) : (
+            <div>
+              <s-paragraph>
+                {themes.length > 0
+                  ? `Found ${themes.length} themes in your store.`
+                  : "No themes found."}
+              </s-paragraph>
+              {themeId ? (
+                <s-button variant="secondary" onClick={openEmbedSettings}>
+                  Open App Embed Settings
+                </s-button>
+              ) : (
+                <s-paragraph>No active theme found to edit.</s-paragraph>
+              )}
+            </div>
+          )}
+        </s-section> */}
+
+
+
+      </s-section>
+
+      <s-section>
+
+        <div
+          style={{
+            border: "1px solid #e1e1e1",
+            borderRadius: "8px",
+            padding: "12px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            fontFamily: "Inter, sans-serif",
+            backgroundColor: "#fff",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "18px" }}>🧩</span>
+            <span style={{ fontWeight: 500 }}>Theme store app embed</span>
+            <span
+              style={{
+                marginLeft: "8px",
+                backgroundColor: embededApp ? "#dcfce7" : "#f1f1f1",
+                color: embededApp ? "#16a34a" : "#666",
+                padding: "2px 8px",
+                borderRadius: "9999px",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              {embededApp ? "On" : "Off"}
+            </span>
+          </div>
+
+          <button
+            onClick={openEmbedSettings}
+            style={{
+              backgroundColor: "#fff",
+              border: "1px solid #d1d1d1",
+              borderRadius: "6px",
+              padding: "6px 12px",
+              fontSize: "14px",
+              cursor: "pointer",
+            }}
+          >
+            App embed settings
+          </button>
+        </div>
       </s-section>
     </s-page>
     </>

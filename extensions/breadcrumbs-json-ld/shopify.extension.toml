@@ -1,0 +1,4 @@
+name = "breadcrumbs-json-ld"
+type = "theme"
+uid = "f22c61f2-e375-d812-a729-baeb02a21c3888376b59"
+extension_points = ["body"]

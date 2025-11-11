@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "45c40a9fea1e1dd99ce513e99da6f059"
-name = "buy-plan-2"
+client_id = "90015c8a69964f79bc9bd5e35644a5bd"
+name = "buy-plan"
 application_url = "https://marceline-unsympathizing-lauri.ngrok-free.dev"
 embedded = true
 
@@ -10,7 +10,6 @@ automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2026-01"
-
 
   [[webhooks.subscriptions]]
   topics = [ "app/scopes_update" ]
@@ -26,7 +25,7 @@ api_version = "2026-01"
   
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products,read_customers,read_themes,write_themes,read_themes"
+scopes = "read_customer_payment_methods,read_orders,read_products,write_own_subscription_contracts,write_products"
 
 [auth]
 redirect_urls = [
