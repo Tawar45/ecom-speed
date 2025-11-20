@@ -200,13 +200,12 @@ function extractEmbededAppId(typeString: string | null): string | null {
 function extractBlockType(typeString: string | null): string | null {
   if (!typeString || typeof typeString !== "string") return null;
   const parts = typeString.split("/");
-  // The second last part is 'star_rating'
   return parts.length >= 2 ? parts[parts.length - 2] : null;
 }
 
 function getFirstKey(obj: any) {
-  if (!obj || typeof obj !== "object") return '';
-  return Object.keys(obj)[0] || '';
+  if (!obj || typeof obj !== "object") return "";
+  return Object.keys(obj)[0] || "";
 }
 
 export default function Index() {
@@ -218,6 +217,8 @@ export default function Index() {
   const [themes, setThemes] = useState<any[]>([]);
   const [loadingThemes, setLoadingThemes] = useState(true);
   const embededAppId = import.meta.env.VITE_EMBEDED_APP_ID || "ecom_expert_speed";
+  const extensionUID = import.meta.env.VITE_EXTENSION_UID || "f22c61f2-e375-d812-a729-baeb02a21c3888376b59";
+  const extensionNAME = import.meta.env.VITE_EXTENSION_NAME;
 
   useEffect(() => {
     const fetchThemeData = async () => {
@@ -225,30 +226,40 @@ export default function Index() {
         const res = await fetch(`/app/theme-extension-data`);
         const data = await res.json();
 
-
+        // embedEnabled in your loader is an array (or null). Normalize to a single item.
+        const embedItem = Array.isArray(data.embedEnabled)
+          ? data.embedEnabled[0]
+          : data.embedEnabled;
         if (data.success) {
-          setThemes(data.themes);
+          setThemes(data.themes || []);
+          console.log(data, '---embedEnabled----embedEnabled');
+          if (embedItem && embedItem.settings && typeof embedItem.settings === "object") {
+            // get first key's value (boolean expected)
+            const firstKey = getFirstKey(embedItem.settings);
+            const value = firstKey ? embedItem.settings[firstKey] : undefined;
 
-          if (data.success && data.embedEnabled.settings) {
-            // Safely update state
-            // setEmbededApp(data.embedEnabled.settings || {});
-
-            const embededValue = data?.embedEnabled?.settings[getFirstKey(data.embedEnabled.settings || {})];
-            if (typeof embededValue === 'boolean') {
-              setEmbededApp(embededValue);
-
-              if (data.embedEnabled && data.embedEnabled.type) {
-                setExtensionId(extractEmbededAppId(data.embedEnabled.type));
-                setEmbededAppName(extractBlockType(data.embedEnabled.type));
-              } else {
-                console.warn("No type found in embedEnabled data.");
-              }
+            // if value is boolean -> set state, else null
+            if (typeof value === "boolean") {
+              setEmbededApp(value);
+            } else {
+              // If not boolean, treat as off (or unknown). Here we set false if falsy, null if undefined.
+              setEmbededApp(value === undefined ? null : Boolean(value));
             }
-            console.log("Embeded App ID and its value:", embededValue);
 
-
+            // set extension/type metadata for open settings link
+            if (embedItem.type) {
+              setExtensionId(extractEmbededAppId(embedItem.type));
+              setEmbededAppName(extractBlockType(embedItem.type));
+            } else {
+              setExtensionId(null);
+              setEmbededAppName(null);
+            }
           } else {
-            console.warn("No embedEnabled found in response.");
+            // No embed item/settings found -> treat as Off (false)
+            setEmbededApp(false);
+            setExtensionId(null);
+            setEmbededAppName(null);
+            console.warn("No embedEnabled settings found in response.");
           }
           if (data.themes?.length > 0) {
             const main = data.themes.find((t: any) => t.role === "MAIN");
@@ -276,54 +287,57 @@ export default function Index() {
         return;
       };
     }
-console.log("Opening embed settings with data:", { themeId, shopDomain: shop?.domain, embededAppName, extensionId });
+    // console.log(extensionUID,'extensionUID');
+    // console.log(extensionNAME,'extensionNAME');
+    // console.log("Opening embed settings with data:", { themeId, shopDomain: shop?.domain, embededAppName, extensionId });
     const url = `https://${shop?.domain}/admin/themes/current/editor?context=apps&activateAppId=${extensionId}/${embededAppName}`;
+    // const url = `https://${shop?.domain}/admin/themes/current/editor?context=apps&activateAppId=${extensionUID}/${extensionNAME}`;
     // const url = `https://${shop.domain}/admin/themes/${themeId}/editor?context=apps&activateAppId=${embeded_app_api_key}/${app_name}`;
     window.open(url, "_blank");
   };
   return (
     <>
-    <s-page heading="Dashboard">
-      <s-section heading="Welcome to your app">
-        <s-paragraph>
-          This is your app dashboard. Here you can manage your subscription and access all features.
-        </s-paragraph>
+      <s-page heading="Dashboard">
+        <s-section heading="Welcome to your app">
+          <s-paragraph>
+            This is your app dashboard. Here you can manage your subscription and access all features.
+          </s-paragraph>
 
-        {shop?.subscription ? (
-          <s-section heading="Current Subscription">
-            <s-paragraph>
-              <strong>Plan:</strong> {shop.subscription.plan.charAt(0).toUpperCase() + shop.subscription.plan.slice(1)}
-            </s-paragraph>
-            <s-paragraph>
-              <strong>Price:</strong> ${shop.subscription.price}/month
-            </s-paragraph>
-            <s-paragraph>
-              <strong>Status:</strong> {shop.subscription.status.charAt(0).toUpperCase() + shop.subscription.status.slice(1)}
-            </s-paragraph>
-            <s-paragraph>
-              <strong>Shop:</strong> {shop.domain}
-            </s-paragraph>
-            <s-button-group>
+          {shop?.subscription ? (
+            <s-section heading="Current Subscription">
+              <s-paragraph>
+                <strong>Plan:</strong> {shop.subscription.plan.charAt(0).toUpperCase() + shop.subscription.plan.slice(1)}
+              </s-paragraph>
+              <s-paragraph>
+                <strong>Price:</strong> ${shop.subscription.price}/month
+              </s-paragraph>
+              <s-paragraph>
+                <strong>Status:</strong> {shop.subscription.status.charAt(0).toUpperCase() + shop.subscription.status.slice(1)}
+              </s-paragraph>
+              <s-paragraph>
+                <strong>Shop:</strong> {shop.domain}
+              </s-paragraph>
+              <s-button-group>
+                <s-button variant="primary" href="/app/pricing">
+                  Change Plan
+                </s-button>
+                <s-button href="/app/billing/cancel">
+                  Cancel Subscription
+                </s-button>
+              </s-button-group>
+            </s-section>
+          ) : (
+            <s-section heading="No Active Subscription">
+              <s-paragraph>
+                You don't have an active subscription. Choose a plan to get started!
+              </s-paragraph>
               <s-button variant="primary" href="/app/pricing">
-                Change Plan
+                View Plans
               </s-button>
-              <s-button href="/app/billing/cancel">
-                Cancel Subscription
-              </s-button>
-            </s-button-group>
-          </s-section>
-        ) : (
-          <s-section heading="No Active Subscription">
-            <s-paragraph>
-              You don't have an active subscription. Choose a plan to get started!
-            </s-paragraph>
-            <s-button variant="primary" href="/app/pricing">
-              View Plans
-            </s-button>
-          </s-section>
-        )}
+            </s-section>
+          )}
 
-        {/* <s-section heading="Theme Store App Embed">
+          {/* <s-section heading="Theme Store App Embed">
           {loadingThemes ? (
             <div>Loading themes...</div>
           ) : (
@@ -346,56 +360,56 @@ console.log("Opening embed settings with data:", { themeId, shopDomain: shop?.do
 
 
 
-      </s-section>
+        </s-section>
 
-      <s-section>
+        <s-section>
 
-        <div
-          style={{
-            border: "1px solid #e1e1e1",
-            borderRadius: "8px",
-            padding: "12px 16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            fontFamily: "Inter, sans-serif",
-            backgroundColor: "#fff",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ fontSize: "18px" }}>🧩</span>
-            <span style={{ fontWeight: 500 }}>Theme store app embed</span>
-            <span
-              style={{
-                marginLeft: "8px",
-                backgroundColor: embededApp ? "#dcfce7" : "#f1f1f1",
-                color: embededApp ? "#16a34a" : "#666",
-                padding: "2px 8px",
-                borderRadius: "9999px",
-                fontSize: "12px",
-                fontWeight: 600,
-              }}
-            >
-              {embededApp ? "On" : "Off"}
-            </span>
-          </div>
-
-          <button
-            onClick={openEmbedSettings}
+          <div
             style={{
+              border: "1px solid #e1e1e1",
+              borderRadius: "8px",
+              padding: "12px 16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontFamily: "Inter, sans-serif",
               backgroundColor: "#fff",
-              border: "1px solid #d1d1d1",
-              borderRadius: "6px",
-              padding: "6px 12px",
-              fontSize: "14px",
-              cursor: "pointer",
             }}
           >
-            App embed settings
-          </button>
-        </div>
-      </s-section>
-    </s-page>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "18px" }}>🧩</span>
+              <span style={{ fontWeight: 500 }}>Theme store app embed</span>
+              <span
+                style={{
+                  marginLeft: "8px",
+                  backgroundColor: embededApp ? "#dcfce7" : "#f1f1f1",
+                  color: embededApp ? "#16a34a" : "#666",
+                  padding: "2px 8px",
+                  borderRadius: "9999px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                }}
+              >
+                {embededApp ? "On" : "Off"}
+              </span>
+            </div>
+
+            <button
+              onClick={openEmbedSettings}
+              style={{
+                backgroundColor: "#fff",
+                border: "1px solid #d1d1d1",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                fontSize: "14px",
+                cursor: "pointer",
+              }}
+            >
+              App embed settings
+            </button>
+          </div>
+        </s-section>
+      </s-page>
     </>
   );
 }
