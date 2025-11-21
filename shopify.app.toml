@@ -2,7 +2,7 @@
 
 client_id = "f1d1d8e0f94673545d15b8fa2ef33bc5"
 name = "Ecom Speed Experts"
-application_url = "https://01c4c75e0af3.ngrok-free.app"
+application_url = "https://boringly-dashiest-minh.ngrok-free.dev"
 embedded = true
 handle = "ecom-speed-experts-2"
 
@@ -32,7 +32,7 @@ use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://01c4c75e0af3.ngrok-free.app/auth/callback",
-  "https://01c4c75e0af3.ngrok-free.app/auth/shopify/callback",
-  "https://01c4c75e0af3.ngrok-free.app/api/auth/callback"
+  "https://boringly-dashiest-minh.ngrok-free.dev/auth/callback",
+  "https://boringly-dashiest-minh.ngrok-free.dev/auth/shopify/callback",
+  "https://boringly-dashiest-minh.ngrok-free.dev/api/auth/callback"
 ]
