@@ -234,11 +234,8 @@ export default function Index() {
           : data.embedEnabled;
         if (data.success) {
           setThemes(data.themes || []);
-          console.log(data, '---embedEnabled----embedEnabled');
-          if (embedItem && embedItem.settings && typeof embedItem.settings === "object") {
-            // get first key's value (boolean expected)
-            const firstKey = getFirstKey(embedItem.settings);
-            const value = firstKey ? embedItem.settings[firstKey] : undefined;
+          if (embedItem && embedItem.type && typeof embedItem.settings === "object") {
+            const value = !embedItem.disabled
 
             // if value is boolean -> set state, else null
             if (typeof value === "boolean") {
@@ -265,7 +262,7 @@ export default function Index() {
           }
           if (data.themes?.length > 0) {
             const main = data.themes.find((t: any) => t.role === "MAIN");
-            console.log("Active theme found-------------data---:", data);
+            // console.log("Active theme found-------------data---:", data);
             if (main) setThemeId(main.id.split("/").pop());
           }
         } else {
@@ -277,11 +274,11 @@ export default function Index() {
         setLoadingThemes(false);
       }
     };
-    console.log("Fetching theme data for dashboard...");
+    // console.log("Fetching theme data for dashboard...");
     fetchThemeData(); //  run the async function 
   }, []);
 
-  console.log("-----> Extension ID and embeded app status:", extensionId, embededApp, themes, themeId);
+  // console.log("-----> Extension ID and embeded app status:", extensionId, embededApp, themes, themeId);
   const openEmbedSettings = () => {
     if (!themeId || !shop?.domain || !embededAppName || !extensionId || !embededAppName) {
       {
@@ -292,7 +289,7 @@ export default function Index() {
     // console.log(extensionUID,'extensionUID');
     // console.log(extensionNAME,'extensionNAME');
     // console.log("Opening embed settings with data:", { themeId, shopDomain: shop?.domain, embededAppName, extensionId });
-    const url = `https://${shop?.domain}/admin/themes/current/editor?context=apps&activateAppId=${extensionId}/${embededAppName}`;
+    const url = `https://${shop?.domain}/admin/themes/current/editor?context=apps&activateAppId=${'9d591d9d-d0a0-81be-f2f9-13c6f8bbddf27131df19'}/${'ecom_expert_speed'}`;
     // const url = `https://${shop?.domain}/admin/themes/current/editor?context=apps&activateAppId=${extensionUID}/${extensionNAME}`;
     // const url = `https://${shop.domain}/admin/themes/${themeId}/editor?context=apps&activateAppId=${embeded_app_api_key}/${app_name}`;
     window.open(url, "_blank");
