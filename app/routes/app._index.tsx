@@ -521,10 +521,35 @@ export default function Index() {
       {/* FAQ */}
       <div style={{ background: "#fff", border: "1px solid #e6e6e6", borderRadius: 8, padding: 16 }}>
         <div style={{ fontWeight: 700 }}>Frequently Asked Questions</div>
-        <details style={{ marginTop: 8 }}>
-          <summary style={{ cursor: "pointer", fontWeight: 600 }}>How does this feature work?</summary>
+
+        {/* FAQ 1 */}
+        <details style={{ marginTop: 12 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+            How does this feature work?
+          </summary>
           <div style={{ color: "#555", marginTop: 8 }}>
-            When your customers hover a link for more than 65 ms, this app automatically preloads the destination page. This results in faster perceived loading times.
+            When your customers hover a link for more than 65 ms, the app automatically
+            preloads the destination page.
+          </div>
+        </details>
+
+        {/* FAQ 2 */}
+        <details style={{ marginTop: 12 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+            Will this slow down my site?
+          </summary>
+          <div style={{ color: "#555", marginTop: 8 }}>
+            No, this feature optimizes perceived loading time without increasing server load.
+          </div>
+        </details>
+
+        {/* FAQ 3 */}
+        <details style={{ marginTop: 12 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+            Is this app free?
+          </summary>
+          <div style={{ color: "#555", marginTop: 8 }}>
+            Yes! SEOAnt Page Speed Optimizer is forever free.
           </div>
         </details>
       </div>
