@@ -220,9 +220,12 @@ export default function Index() {
   const embededAppId = import.meta.env.VITE_EMBEDED_APP_ID || "ecom_expert_speed";
   const extensionUID = import.meta.env.VITE_EXTENSION_UID || "f22c61f2-e375-d812-a729-baeb02a21c3888376b59";
   const extensionNAME = import.meta.env.VITE_EXTENSION_NAME;
-  const logoUrl = "../../speed_static.png";
+  const logoUrl = "../../logo.png";
+  
   const [isLoading, setIsLoading] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
 
   
   useEffect(() => {
@@ -292,14 +295,14 @@ export default function Index() {
     window.open(url, "_blank");
   };
 
-    const handleClick = () => {
-    if (isLoading) return; // ignore double clicks
-    setIsLoading(true);
+  const handleClick = () => {
+    if (isSpinning) return; // prevent double-click
 
-    // show spinner for 3 seconds
-    timerRef.current = window.setTimeout(() => {
-      setIsLoading(false);
-      timerRef.current = null;
+    setIsSpinning(true);
+
+    // stop spinning after 3 seconds
+    setTimeout(() => {
+      setIsSpinning(false);
     }, 3000);
   };
 
@@ -421,68 +424,40 @@ export default function Index() {
         >
           <div style={{ fontWeight: 600, marginBottom: 12 }}>Web performance</div>
 
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-      {/* circle area */}
-      <div
-        style={{
-          width: 160,
-          height: 160,
-          borderRadius: "50%",
-          background: "#f3f4f6",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <svg width="90" height="90" viewBox="0 0 100 100">
-          {/* Grey background ring */}
-          <circle
-            cx="50"
-            cy="50"
-            r="40"
-            stroke="#e5e7eb"
-            strokeWidth="10"
-            fill="none"
-          />
-
-          {/* Green 100% ring */}
-          <circle
-            cx="50"
-            cy="50"
-            r="40"
-            stroke="#10b981"   // GREEN color (#10b981)
-            strokeWidth="8"
-            fill="none"
-            strokeLinecap="round"
-            transform="rotate(-90 50 50)"
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          {/* circle area */}
+        <div
+          onClick={handleClick}
+          style={{
+            width: 160,
+            height: 160,
+            borderRadius: "50%",
+            background: "#f3f4f6",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <div
             style={{
-              strokeDasharray: `${2 * Math.PI * 40} ${2 * Math.PI * 40}`,  // full circle
-              transition: "stroke-dasharray 0.3s ease",
+              width: 90,
+              height: 90,
+              borderRadius: "50%",
+              border: "8px solid #e5e7eb",
+              borderTopColor: "#10b981", // green
+              animation: isSpinning ? "spin 1s linear infinite" : "none",
             }}
-          />
-        </svg>
-      </div>
-      {/* button */}
-      <button
-        onClick={handleClick}
-        disabled={isLoading}
-        style={{
-          marginTop: 12,
-          background: "#f59e0b",
-          border: "none",
-          padding: "8px 14px",
-          borderRadius: 6,
-          cursor: isLoading ? "not-allowed" : "pointer",
-          color: "#fff",
-        }}
-        type="button"
-      >
-        {isLoading ? "Loading..." : "⚡ Speed up"}
-      </button>
-
-      {/* inline CSS for spinner keyframes */}
-      <style>{`@keyframes sa-spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+          />          
+          <style>
+            {`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}
+          </style>
+        </div>
+        </div>
 
           <div style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 13, color: "#555" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -501,23 +476,11 @@ export default function Index() {
         </div>
 
         {/* Site speed */}
-        <div
-          style={{
-            flex: 1,
-            background: "#fff",
-            border: "1px solid #e6e6e6",
-            borderRadius: 8,
-            padding: 20,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <div style={{ flex: 1,background: "#fff",border: "1px solid #e6e6e6",borderRadius: 8,padding: 20,display: "flex",flexDirection: "column",alignItems: "center",justifyContent: "center",}}>
           <div style={{ fontWeight: 600, marginBottom: 12 }}>Site Speed Up</div>
-          <img src={logoUrl} alt="rocket" style={{ width: 220, height: 160, objectFit: "contain", opacity: 0.95 }} />
+          <img   src={embededApp ? '../../speed_on.png' : '../../speed_off.png'} alt="rocket" style={{ width: 220, height: 160, objectFit: "contain", opacity: 0.95 }} />
+          <div style={{ marginTop: 6, background: embededApp ? "#dcfce7" : "#f3f4f6", color: embededApp ? "#16a34a" : "#555",fontSize: 12,padding: "2px 8px",borderRadius: 12,display: "inline-block",fontWeight: 600,}}>{embededApp ? "On" : "Off"}</div>        
           <div style={{ marginTop: 12, fontSize: 13, color: "#666", textAlign: "center" }}>Enable Shopify embed to speed up your store</div>
-
           <button
             onClick={() => openEmbedSettings()}
             style={{
@@ -538,7 +501,7 @@ export default function Index() {
       {/* How it works */}
       <div style={{ background: "#fff", border: "1px solid #e6e6e6", borderRadius: 8, padding: 16, display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 16 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700 }}>How SEOAnt Page speed Optimizer works</div>
+          <div style={{ fontWeight: 700 }}>How Ecom speed Page speed Optimizer works</div>
           <div style={{ color: "#555", marginTop: 8, fontSize: 14 }}>
             When your customers hover a link for more than 65 ms, this app will automatically request the link's destination.
             This typically results in an average perceived reduction of latency of 200-300 ms.
@@ -546,7 +509,7 @@ export default function Index() {
 
           <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
             <button style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d1d1", background: "#fff", cursor: "pointer" }} type="button">Preview</button>
-            <button style={{ padding: "8px 12px", borderRadius: 6, border: "none", background: "#fff", color: "#4f46e5", cursor: "pointer" }} type="button">Watch the video</button>
+            <button style={{ padding: "8px 12px", borderRadius: 6, border: "none", background: "#fff", color: "#4f46e5", cursor: "pointer" }} type="button"  onClick={() => setShowVideoModal(true)}>Watch the video</button>
           </div>
         </div>
 
@@ -568,6 +531,65 @@ export default function Index() {
 
       <style>{`@keyframes sa-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
+
+    {showVideoModal && (
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100vw",
+      height: "100vh",
+      background: "rgba(0,0,0,0.55)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999,
+    }}
+  >
+    <div
+      style={{
+        background: "#fff",
+        width: "90%",
+        maxWidth: "700px",
+        borderRadius: "10px",
+        padding: "20px",
+        position: "relative",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+      }}
+    >
+      {/* Close Button */}
+      <button
+        onClick={() => setShowVideoModal(false)}
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 10,
+          background: "transparent",
+          border: "none",
+          fontSize: "20px",
+          cursor: "pointer",
+        }}
+      >
+        ✖
+      </button>
+
+      {/* Video */}
+      <div style={{ width: "100%", height: "400px" }}>
+        <iframe
+          width="100%"
+          height="100%"
+          src="https://www.youtube.com/embed/dQw4w9WgXcQ"   // your video URL here
+          title="Video"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        ></iframe>
+      </div>
+    </div>
+  </div>
+)}
+
 </s-section>
 
       </s-page>
