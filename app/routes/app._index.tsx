@@ -3,7 +3,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { sendWelcomeEmailInstalledMaill } from "../utils/email.server";
-import { useEffect, useState } from "react";
+import { useEffect, useState ,useRef  } from "react";
 import { d } from "node_modules/@react-router/dev/dist/routes-CZR-bKRt";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -221,7 +221,10 @@ export default function Index() {
   const extensionUID = import.meta.env.VITE_EXTENSION_UID || "f22c61f2-e375-d812-a729-baeb02a21c3888376b59";
   const extensionNAME = import.meta.env.VITE_EXTENSION_NAME;
   const logoUrl = "../../speed_static.png";
+  const [isLoading, setIsLoading] = useState(false);
+  const timerRef = useRef<number | null>(null);
 
+  
   useEffect(() => {
     const fetchThemeData = async () => {
       try {
@@ -278,7 +281,6 @@ export default function Index() {
     fetchThemeData(); //  run the async function 
   }, []);
 
-  // console.log("-----> Extension ID and embeded app status:", extensionId, embededApp, themes, themeId);
   const openEmbedSettings = () => {
     if (!themeId || !shop?.domain || !embededAppName || !extensionId || !embededAppName) {
       {
@@ -286,83 +288,25 @@ export default function Index() {
         return;
       };
     }
-    // console.log(extensionUID,'extensionUID');
-    // console.log(extensionNAME,'extensionNAME');
-    // console.log("Opening embed settings with data:", { themeId, shopDomain: shop?.domain, embededAppName, extensionId });
     const url = `https://${shop?.domain}/admin/themes/current/editor?context=apps&activateAppId=${'9d591d9d-d0a0-81be-f2f9-13c6f8bbddf27131df19'}/${'ecom_expert_speed'}`;
-    // const url = `https://${shop?.domain}/admin/themes/current/editor?context=apps&activateAppId=${extensionUID}/${extensionNAME}`;
-    // const url = `https://${shop.domain}/admin/themes/${themeId}/editor?context=apps&activateAppId=${embeded_app_api_key}/${app_name}`;
     window.open(url, "_blank");
   };
+
+    const handleClick = () => {
+    if (isLoading) return; // ignore double clicks
+    setIsLoading(true);
+
+    // show spinner for 3 seconds
+    timerRef.current = window.setTimeout(() => {
+      setIsLoading(false);
+      timerRef.current = null;
+    }, 3000);
+  };
+
   return (
     <>
       <s-page heading="Dashboard">
-        <s-section heading="Welcome to your app">
-          <s-paragraph>
-            This is your app dashboard. Here you can manage your subscription and access all features.
-          </s-paragraph>
-
-          {shop?.subscription ? (
-            <s-section heading="Current Subscription">
-              <s-paragraph>
-                <strong>Plan:</strong> {shop.subscription.plan.charAt(0).toUpperCase() + shop.subscription.plan.slice(1)}
-              </s-paragraph>
-              <s-paragraph>
-                <strong>Price:</strong> ${shop.subscription.price}/month
-              </s-paragraph>
-              <s-paragraph>
-                <strong>Status:</strong> {shop.subscription.status.charAt(0).toUpperCase() + shop.subscription.status.slice(1)}
-              </s-paragraph>
-              <s-paragraph>
-                <strong>Shop:</strong> {shop.domain}
-              </s-paragraph>
-              <s-button-group>
-                <s-button variant="primary" href="/app/pricing">
-                  Change Plan
-                </s-button>
-                <s-button href="/app/billing/cancel">
-                  Cancel Subscription
-                </s-button>
-              </s-button-group>
-            </s-section>
-          ) : (
-            <s-section heading="No Active Subscription">
-              <s-paragraph>
-                You don't have an active subscription. Choose a plan to get started!
-              </s-paragraph>
-              <s-button variant="primary" href="/app/pricing">
-                View Plans
-              </s-button>
-            </s-section>
-          )}
-
-          {/* <s-section heading="Theme Store App Embed">
-          {loadingThemes ? (
-            <div>Loading themes...</div>
-          ) : (
-            <div>
-              <s-paragraph>
-                {themes.length > 0
-                  ? `Found ${themes.length} themes in your store.`
-                  : "No themes found."}
-              </s-paragraph>
-              {themeId ? (
-                <s-button variant="secondary" onClick={openEmbedSettings}>
-                  Open App Embed Settings
-                </s-button>
-              ) : (
-                <s-paragraph>No active theme found to edit.</s-paragraph>
-              )}
-            </div>
-          )}
-        </s-section> */}
-
-
-
-        </s-section>
-
         <s-section>
-
           <div
             style={{
               border: "1px solid #e1e1e1",
@@ -477,30 +421,68 @@ export default function Index() {
         >
           <div style={{ fontWeight: 600, marginBottom: 12 }}>Web performance</div>
 
-          <div style={{ display: "flex", justifyContent: "center", padding: 8 }}>
-            <div
-              style={{
-                width: 160,
-                height: 160,
-                borderRadius: "50%",
-                background: "#f3f4f6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: "50%",
-                  border: "6px solid #e5e7eb",
-                  borderTopColor: "#6366f1",
-                  animation: "sa-spin 1s linear infinite",
-                }}
-              />
-            </div>
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+      {/* circle area */}
+      <div
+        style={{
+          width: 160,
+          height: 160,
+          borderRadius: "50%",
+          background: "#f3f4f6",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <svg width="90" height="90" viewBox="0 0 100 100">
+          {/* Grey background ring */}
+          <circle
+            cx="50"
+            cy="50"
+            r="40"
+            stroke="#e5e7eb"
+            strokeWidth="10"
+            fill="none"
+          />
+
+          {/* Green 100% ring */}
+          <circle
+            cx="50"
+            cy="50"
+            r="40"
+            stroke="#10b981"   // GREEN color (#10b981)
+            strokeWidth="8"
+            fill="none"
+            strokeLinecap="round"
+            transform="rotate(-90 50 50)"
+            style={{
+              strokeDasharray: `${2 * Math.PI * 40} ${2 * Math.PI * 40}`,  // full circle
+              transition: "stroke-dasharray 0.3s ease",
+            }}
+          />
+        </svg>
+      </div>
+      {/* button */}
+      <button
+        onClick={handleClick}
+        disabled={isLoading}
+        style={{
+          marginTop: 12,
+          background: "#f59e0b",
+          border: "none",
+          padding: "8px 14px",
+          borderRadius: 6,
+          cursor: isLoading ? "not-allowed" : "pointer",
+          color: "#fff",
+        }}
+        type="button"
+      >
+        {isLoading ? "Loading..." : "⚡ Speed up"}
+      </button>
+
+      {/* inline CSS for spinner keyframes */}
+      <style>{`@keyframes sa-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
 
           <div style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 13, color: "#555" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
