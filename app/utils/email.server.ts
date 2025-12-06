@@ -1,13 +1,15 @@
-import {cancellationEmailTemplate } from "../utils/cancel_subscription_template";
+import { cancellationEmailTemplate } from "../utils/cancel_subscription_template";
 // import {welcomeEmailTemplate } from "../utils/welcome_template";
+import { PrismaClient } from "@prisma/client";
+import { getShopInfo } from "./graphql-query";
 import nodemailer from 'nodemailer';
 import { welcomeEmailTemplate } from "./welcome_template";
 export interface WelcomeEmailData {
   shopDomain: string;
   plan: string;
   price: number;
-  recivederEmail:string;
-  planName:string;
+  recivederEmail: string;
+  planName: string;
 }
 // ✅ Create a reusable SMTP transporter
 const transporter = nodemailer.createTransport({
@@ -29,43 +31,50 @@ transporter.verify((error, success) => {
   }
 });
 
-export async function sendWelcomeEmailInstalledMaill(
-
-  shopName: string,
-  recipientEmail: string,
-) {
-  console.log('📧 [EMAIL] Starting app install welcome email process...');
+export async function sendWelcomeEmailInstalledMaill(ShopInfo: any) {
   if (!process.env.SMTP_FROM_EMAIL) {
-    console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping cancellation email');
+    console.warn(" [EMAIL] SMTP_FROM_EMAIL not configured, skipping welcome email");
     return;
   }
 
+  // FIX: pick the correct email field
+  const recipientEmail =
+    ShopInfo.email ||
+    ShopInfo.contactEmail ||
+    null;
+
+  if (!recipientEmail) {
+    console.error(" [EMAIL] No valid email found in ShopInfo:", ShopInfo);
+    return;
+  }
+
+  const shopName = ShopInfo.name || "Your Store";
 
   const msg = {
-    to: recipientEmail,
+    to: recipientEmail, // FIXED
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Welcome - ${shopName} Plan`,
     html: welcomeEmailTemplate({
-      shopName: "Coffee Haven",
+      shopName,
       planName: "Premium",
-    })
+    }),
   };
-  try {
-    await transporter.sendMail(msg);
-    console.log(`✅ [EMAIL] Wrlcome email sent successfully to ${shopName}`);
-  } catch (error) {
-    console.error('❌ [EMAIL] Error sending cancellation email:', error);
-  }
 
+  try {
+    return await transporter.sendMail(msg);
+  } catch (error) {
+    console.error(" [EMAIL] Error sending welcome email:", error);
+    return null;
+  }
 }
+
+
 export async function sendWelcomeEmail(
   shopDomain: string,
   plan: string,
   price: number,
-  recivederEmail:string
+  recivederEmail: string
 ): Promise<void> {
-  console.log('📧 [EMAIL] Starting welcome email process...');
-  console.log('📧 [EMAIL] Email parameters:', { shopDomain, plan, price });
 
   if (!process.env.SMTP_FROM_EMAIL) {
     console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping email');
@@ -82,7 +91,7 @@ export async function sendWelcomeEmail(
     to: recivederEmail,  //'rohit45.tawar@gmail.com',
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Welcome to ${planName} Plan!`,
-    html: welcomeEmailTemplate({shopName:shopDomain, planName:'planName'}),
+    html: welcomeEmailTemplate({ shopName: shopDomain, planName: 'planName' }),
   };
 
   try {
@@ -124,7 +133,8 @@ export async function sendCancellationEmail(
 
 export async function sendExpirationEmail(
   shopDomain: string,
-  plan: string
+  plan: string,
+  recepientEmail: string
 ): Promise<void> {
   console.log('📧 [EMAIL] Starting expiration email process...');
 
@@ -137,7 +147,7 @@ export async function sendExpirationEmail(
   const planName = planNames[plan as keyof typeof planNames] || plan;
 
   const msg = {
-    to: `rohit45.tawar@gmail.com`,
+    to: recepientEmail,
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Your ${planName} Plan Has Expired`,
     html: `
@@ -155,5 +165,80 @@ export async function sendExpirationEmail(
     console.log(`✅ [EMAIL] Expiration email sent successfully to ${shopDomain}`);
   } catch (error) {
     console.error('❌ [EMAIL] Error sending expiration email:', error);
+  }
+}
+
+
+export async function handleShopSession(
+  prisma: PrismaClient,
+  session: any,
+  admin: any                     // whatever your Shopify admin instance type is
+) {
+  try {
+    // -------------------------------
+    // 1. Find existing shop (with last subscription)
+    // -------------------------------
+    let shop = await prisma.shop.findUnique({
+      where: { domain: session.shop },
+      include: {
+        subscriptions: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+    });
+
+
+    // -------------------------------
+    // 2. If shop NOT found → create
+    // -------------------------------
+    if (!shop) {
+      shop = await prisma.shop.create({
+        data: {
+          domain: session.shop,
+          accessToken: session.accessToken,
+        },
+      });
+
+
+
+      return shop;
+    }
+    // -------------------------------
+    // Send welcome email (only once)
+    // -------------------------------
+    if (!shop.welcomeEmailSent) {
+      try {
+        const info = await getShopInfo(admin);
+
+        const res = await sendWelcomeEmailInstalledMaill(info);
+        if (!res) {
+          console.error("[DASHBOARD] Failed to send welcome email: No response from email function");
+          return shop;
+        }
+        await prisma.shop.update({
+          where: { domain: session.shop },
+          data: {
+            welcomeEmailSent: true,
+          },
+        });
+      } catch (err) {
+        console.error("[DASHBOARD] Failed to send welcome email:", err);
+      }
+    }
+    // -------------------------------
+    // 3. If shop exists → update token
+    // -------------------------------
+    await prisma.shop.update({
+      where: { id: shop.id },
+      data: {
+        accessToken: session.accessToken,
+      },
+    });
+
+    return shop;
+  } catch (error) {
+    console.error("[SHOP UTILS] Error in handleShopSession:", error);
+    throw error;
   }
 }

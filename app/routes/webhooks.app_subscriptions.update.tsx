@@ -125,23 +125,32 @@ async function handleSubscriptionCancellation(shop: any, plan: string, subscript
 async function handleSubscriptionExpiration(shop: any, plan: string, subscriptionId: string) {
   console.log(" [SUBSCRIPTION WEBHOOK] Handling expiration...");
   
-  // Update subscription to expired status
-  const updated = await (prisma as any).subscription.updateMany({
-    where: {
-      shopId: shop.id,
-      status: "active"
-    },
-    data: {
-      status: "expired",
-      updatedAt: new Date()
-    }
-  });
+ // 1. Fetch active subscription
+const subscription = await prisma.subscription.findFirst({
+  where: {
+    shopId: shop.id,
+    status: "active",
+  },
+});
 
-  console.log(`✅ [SUBSCRIPTION WEBHOOK] Updated ${updated.count} subscription(s) to expired status`);
+if (!subscription) {
+  console.log("⚠ No active subscription found for shop:", shop.domain);
+  return;
+}
 
+// 2. Update subscription to expired
+const updated = await prisma.subscription.update({
+  where: { id: subscription.id },
+  data: {
+    status: "expired",
+    updatedAt: new Date(),
+  },
+});
+
+console.log(`✅ Subscription ${updated.id} marked as expired.`);
   // Send expiration email
   try {
-    await sendExpirationEmail(shop.domain, plan);
+    await sendExpirationEmail(shop.domain, plan,subscription.email);
     console.log("✅ [SUBSCRIPTION WEBHOOK] Expiration email sent");
   } catch (emailError) {
     console.error("❌ [SUBSCRIPTION WEBHOOK] Failed to send expiration email:", emailError);

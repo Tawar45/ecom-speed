@@ -49,6 +49,8 @@ model Subscription {
   plan      String   // "basic", "pro", "business"
   price     Float    // Monthly price in USD
   status    String   // "active", "cancelled", "pending"
+  email     String?  // optional
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

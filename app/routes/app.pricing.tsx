@@ -13,7 +13,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const url = new URL(request.url);
   const chargeId = url.searchParams.get("charge_id");
-
+console.log(chargeId,'--------------------chargeId in pricing loader');
   const combinedQuery = `
     query {
       shop {
@@ -48,7 +48,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   try {
     const response = await admin.graphql(combinedQuery);
     const data = await response.json() as any;
-    // console.log(data?.data?.shop.email,'data');
     const activeSubscriptions = data.data?.currentAppInstallation?.activeSubscriptions || [];
       // If there's an active subscription, inspect its status and optionally send a welcome email.
     const activeSubscription = activeSubscriptions.length > 0 ? activeSubscriptions[0] : null;
@@ -76,7 +75,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           }
           const recipient = process.env.EMAIL_SUPPORT_TO; // fallback; replace with real recipient logic
           await sendWelcomeEmail(shopDomain, planName, Number(amount), recivederEmail);
-          console.log(`[PRICING LOADER] Sent welcome email for ${shopDomain} plan=${planName} id=${activeSubscription.id}`);
         } catch (emailErr) {
           console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
         }
@@ -106,9 +104,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     const { admin, session } = await authenticate.admin(request);
     const storeName = session.shop.replace('.myshopify.com', '');
-    const APP_HANDLE = process.env.SHOPIFY_APP_HANDLE || 'ecom-speed-experts-2';
+    const APP_HANDLE = process.env.VITE_SHOPIFY_APP_HANDLE || 'ecom-page-speed-expert';
      // Build dynamic return URL
     let returnUrl = `https://admin.shopify.com/store/${storeName}/apps/${APP_HANDLE}/app/pricing`;
+    console.log("----> [PRICING ACTION] Return URL:", returnUrl);
     const formData = await request.formData();
     const plan = formData.get("plan") as string;
     const price = parseFloat(formData.get("price") as string);    // Validate form data
@@ -151,7 +150,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const response = await admin.graphql(mutation, { variables });
     const data = await response.json() as any;
 
-    console.log(" ----> [PRICING ACTION] GraphQL response:     --=-=-=-=-=-", data);
     if (data.errors) {
       console.error("❌ [PRICING ACTION] GraphQL errors:", data.errors);
       return { error: `GraphQL Error: ${data.errors[0]?.message || "Unknown error"}` };
@@ -160,7 +158,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       console.error("❌ [PRICING ACTION] User errors:", data.data.appSubscriptionCreate.userErrors);
       return { error: data.data.appSubscriptionCreate.userErrors[0].message };
     }
-    console.log(data.data,'getting data by data');
 
     const confirmationUrl = data.data.appSubscriptionCreate.confirmationUrl;
     if (!confirmationUrl) {
@@ -276,8 +273,6 @@ export default function PricingPage() {
   }
 
   const isActivePlan = (planId: string) => currentPlan === planId;
-  console.log(isActivePlan,'isActivePlan');
-  console.log(currentPlan,'planId');
   return (
     <s-page heading="Choose Your Plan">
     <s-section heading="Pricing Plans">

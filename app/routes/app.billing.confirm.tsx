@@ -107,7 +107,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     // Get current app installation and active subscriptions
     const query = `
       query {
-        currentAppInstallation {
+      shop {
+        id
+        name
+        email
+      }
+      currentAppInstallation {
           activeSubscriptions {
             id
             name
@@ -142,7 +147,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
 
     const activeSubscriptions = data.data.currentAppInstallation.activeSubscriptions;
-
+    const recivederEmail = data?.data?.shop.email
     if (activeSubscriptions.length === 0) {
       console.error(" [BILLING CONFIRM] No active subscription found");
       return { error: "No active subscription found" };
@@ -194,7 +199,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           shopId: shop.id,
           plan,
           price,
-          status: "active"
+          status: "active",
+          email: recivederEmail
         }
       });
     }

@@ -3,43 +3,34 @@ import type { LoaderFunctionArgs } from "react-router";
 import prisma from "../db.server";
 import { sendWelcomeEmailInstalledMaill } from "../utils/email.server";
 import { authenticate } from "../shopify.server"; // temporarily disabled for static session
-
+import { getShopInfo } from "app/utils/graphql-query";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-    console.log("----> [AUTH CALLBACK] Starting authentication callback loader...");
 
-    const { session } = await authenticate.admin(request);
-
-
-    console.log("----> [AUTH CALLBACK] Authentication successful, session obtained.", session);
-
-    const shopDomain = session.shop;
-    console.log("----> [AUTH CALLBACK] Authenticated shop:", shopDomain);
+    const { session, admin } = await authenticate.admin(request);
 
     //  Find existing shop record using domain (not shopId)
     const existingShop = await prisma.shop.findUnique({
-        where: { domain: shopDomain },
+        where: { domain: session.shop },
     });
 
-    console.log("----> [AUTH CALLBACK] Checking welcome email status for shop:", shopDomain, existingShop);
-
+        console.log('existingShop-----callback',existingShop);
     if (!existingShop?.welcomeEmailSent) {
         //  Send email
-        await sendWelcomeEmailInstalledMaill(shopDomain, session.shop);
+        const ShopInfoResult = await getShopInfo(admin);
+        await sendWelcomeEmailInstalledMaill(ShopInfoResult);
 
         //  Use correct upsert shape
         await prisma.shop.upsert({
-            where: { domain: shopDomain }, // use `domain` field
+            where: { domain: session.shop }, // use `domain` field
             update: { welcomeEmailSent: true, accessToken: session.accessToken },
             create: {
-                domain: shopDomain,
+                domain: session.shop,
                 accessToken: session.accessToken,
                 welcomeEmailSent: true,
             },
         });
 
-        console.log("----> [AUTH CALLBACK] Welcome email sent and DB updated!");
     } else {
-        console.log("----> [AUTH CALLBACK] Welcome email already sent, skipping...");
     }
 
     //  Redirect to app home

@@ -5,65 +5,15 @@ import prisma from "../db.server";
 import { sendWelcomeEmailInstalledMaill } from "../utils/email.server";
 import { useEffect, useState ,useRef  } from "react";
 import { d } from "node_modules/@react-router/dev/dist/routes-CZR-bKRt";
-
+import { handleShopSession } from "../utils/email.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
 
-  console.log(" [DASHBOARD] Loading dashboard data...");
 
   try {
-    const { session } = await authenticate.admin(request);
+    const { session, admin } = await authenticate.admin(request);
 
-    console.log(" [DASHBOARD] Authentication successful");
-    console.log(" [DASHBOARD] Session data:", {
-      shop: session?.shop,
-      accessToken: session?.accessToken ? "***" + session.accessToken.slice(-4) : "none",
-      isOnline: session?.isOnline
-    });
-
-    // Get or create shop record
-    console.log(" [DASHBOARD] Looking up shop in database...");
-    let shop = await (prisma as any).shop.findUnique({
-      where: { domain: session.shop },
-      include: {
-        subscriptions: {
-          orderBy: { createdAt: "desc" },
-          take: 1
-        }
-      }
-    });
-
-    if (!shop) {
-
-      shop = await (prisma as any).shop.create({
-        data: {
-          domain: session.shop,
-          accessToken: session.accessToken
-        }
-      });
-      console.log(" [DASHBOARD] Shop created:", { id: shop.id, domain: shop.domain });
-
-
-      // welcome email login 
-      if (!shop?.welcomeEmailSent) {
-        //  Send email
-        sendWelcomeEmailInstalledMaill(session.shop, session.shop).catch(err => {
-          console.error(" [DASHBOARD] Failed to send welcome email:", err);
-        });
-        //  Use correct upsert shape
-        await prisma.shop.update({
-          where: { domain: session.shop }, // use `domain` field
-          data: { welcomeEmailSent: true, accessToken: session.accessToken },
-
-        });
-      }
-
-    } else {
-      console.log(" [DASHBOARD] Updating shop access token...");
-      await (prisma as any).shop.update({
-        where: { id: shop.id },
-        data: { accessToken: session.accessToken }
-      });
-    }
+    // this function will create or update the shop record as needed and send welcome email
+    let shop = await handleShopSession(prisma, session, admin);
 
     // Check for pending subscriptions and activate them
     const pendingSubscription = await (prisma as any).subscription.findFirst({
@@ -75,7 +25,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     });
 
     if (pendingSubscription) {
-      console.log(" [DASHBOARD] Found pending subscription, activating...");
       await (prisma as any).subscription.update({
         where: { id: pendingSubscription.id },
         data: { status: "active" }
@@ -91,12 +40,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     });
 
     if (activeSubscriptions.length === 0) {
-      console.log(" [DASHBOARD] No active subscription in database, checking Shopify...");
       try {
-        const { admin } = await authenticate.admin(request);
+        // const { admin } = await authenticate.admin(request);
 
         const query = `
           query {
+            shop {
+              id
+              name
+              email
+            }
             currentAppInstallation {
               activeSubscriptions {
                 id
@@ -123,25 +76,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
         const response = await admin.graphql(query);
         const data = await response.json() as any;
-
+        const recivederEmail = data?.data?.shop.email
         if (data.data?.currentAppInstallation?.activeSubscriptions?.length > 0) {
           const shopifySubscription = data.data.currentAppInstallation.activeSubscriptions[0];
           const plan = shopifySubscription.name.toLowerCase().replace(" plan", "");
           const price = parseFloat(shopifySubscription.lineItems[0]?.plan?.pricingDetails?.price?.amount || "0");
 
-          console.log(" [DASHBOARD] Found active subscription in Shopify, creating database record...");
-          console.log(" [DASHBOARD] Price conversion:", {
-            original: shopifySubscription.lineItems[0]?.plan?.pricingDetails?.price?.amount,
-            converted: price,
-            type: typeof price
-          });
+        
 
           const newSubscription = await (prisma as any).subscription.create({
             data: {
               shopId: shop.id,
               plan,
               price,
-              status: "active"
+              status: "active",
+              email: recivederEmail
             }
           });
         }
@@ -162,16 +111,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
     });
 
-    console.log(" [DASHBOARD] Shop data retrieved:", {
-      shopFound: !!shop,
-      domain: shop?.domain,
-      subscriptionCount: shop?.subscriptions?.length || 0,
-      activeSubscription: shop?.subscriptions?.[0] ? {
-        plan: shop.subscriptions[0].plan,
-        price: shop.subscriptions[0].price,
-        status: shop.subscriptions[0].status
-      } : null
-    });
+  
 
     const result = {
       shop: shop ? {
@@ -180,7 +120,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       } : null
     };
 
-    console.log(" [DASHBOARD] Dashboard data loaded successfully");
     return result;
   } catch (error) {
     console.error("[DASHBOARD] Error loading shop data:", {
@@ -217,9 +156,7 @@ export default function Index() {
   const [embededAppName, setEmbededAppName] = useState<string | null>();
   const [themes, setThemes] = useState<any[]>([]);
   const [loadingThemes, setLoadingThemes] = useState(true);
-  const embededAppId = import.meta.env.VITE_EMBEDED_APP_ID || "ecom_expert_speed";
-  const extensionUID = import.meta.env.VITE_EXTENSION_UID || "f22c61f2-e375-d812-a729-baeb02a21c3888376b59";
-  const extensionNAME = import.meta.env.VITE_EXTENSION_NAME;
+ 
   const logoUrl = "../../logo.png";
   
   const [isLoading, setIsLoading] = useState(false);
@@ -268,7 +205,6 @@ export default function Index() {
           }
           if (data.themes?.length > 0) {
             const main = data.themes.find((t: any) => t.role === "MAIN");
-            // console.log("Active theme found-------------data---:", data);
             if (main) setThemeId(main.id.split("/").pop());
           }
         } else {
@@ -280,7 +216,6 @@ export default function Index() {
         setLoadingThemes(false);
       }
     };
-    // console.log("Fetching theme data for dashboard...");
     fetchThemeData(); //  run the async function 
   }, []);
 
@@ -288,10 +223,10 @@ export default function Index() {
     if (!themeId || !shop?.domain || !embededAppName || !extensionId || !embededAppName) {
       {
         console.error("⚠️ Missing data to open embed settings:", { themeId, shopDomain: shop?.domain, embededAppName, extensionId });
-        return;
+        // return;
       };
     }
-    const url = `https://${shop?.domain}/admin/themes/current/editor?context=apps&activateAppId=${'9d591d9d-d0a0-81be-f2f9-13c6f8bbddf27131df19'}/${'ecom_expert_speed'}`;
+    const url = `https://${shop?.domain}/admin/themes/current/editor?context=apps&activateAppId=${extensionId}/${embededAppName}`;
     window.open(url, "_blank");
   };
 

@@ -10,12 +10,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
 
   // support both possible env var spellings; fallback to a default handle
-  const app_handle =
-    import.meta.env.VITE_EMBEDED_app_handle ||
-    import.meta.env.VITE_EMBEDDED_APP_HANDLE ||
-    "buy-plan-2";
-
-  console.log("=======-----==---extension active/inactive code loaded-----");
+  const app_handle =  import.meta.env.VITE_EMBEDED_app_handle || "ecom-page-speed-expert";
 
   const themeQuery = `
     query {
@@ -79,7 +74,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const contentNoComments = removeComments(content);
     const matchingBlocks = findBlocksForApp(contentNoComments, app_handle);
 
-    console.log("--==Is app embed enabled:-----", matchingBlocks);
 
     return {
       success: true,
