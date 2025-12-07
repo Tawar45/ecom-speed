@@ -9,31 +9,41 @@ export interface Plan {
   
   export const plans: Plan[] = [
     {
-      name: "Basic",
+      name: "Free Forever Plan",
       price: 10,
       plan: "basic",
-      features: ["Basic features", "Email support", "Standard analytics"],
+      features: [
+  "Speed Optimization on the Homepage",
+  "Delivers smoother shopping experience",
+  "Helps increase conversions and sales",
+  "Fully optimized for all device types",
+  "No maintenance needed — runs automatically",
+  "Great for growing stores",
+  "Reduces drop-offs during home page browsing",
+  "Provides stronger overall performance results",
+  "Includes standard support"
+],
+
     },
     {
-      name: "Pro",
+      name: "Expert Plan — $9/month",
       price: 20,
-      plan: "pro",
+      plan: "Expert Plan — $9/month",
       features: [
-        "All Basic features",
-        "Priority support",
-        "Advanced analytics",
-        "API access",
-      ],
+      "All Features of the Free plan",
+      "Speed Optimization on all pages across the store",
+      "Advanced handling for mobile & slow networks",
+      "Optimized for all medium & high-traffic stores",
+      "Reduces drop-offs during home, collection,product & cart browsing",
+      "Includes priority support"
+    ],
     },
     {
-      name: "Business",
+      name: "Expert Yearly Plan — $79/year",
       price: 30,
-      plan: "business",
+      plan: "Expert Yearly Plan — $79/year",
       features: [
-        "All Pro features",
-        "24/7 support",
-        "Custom integrations",
-        "White-label options",
+        "Get approximately 27% off by choosing annual billing"
       ],
     },
   ];

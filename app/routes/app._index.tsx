@@ -245,6 +245,60 @@ export default function Index() {
     <>
       <s-page heading="Dashboard">
         <s-section>
+             {/* Promo bar */}
+            <div
+                style={{
+                  background: "#fff",
+                  border: "1px solid #e6e6e6",
+                  borderRadius: 8,
+                  padding: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 16,
+                }}
+              >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 8,
+                    background: "#faf5ff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <img src={logoUrl} alt="app" style={{ width: 28, height: 28, objectFit: "contain" }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600 }}>Optimize Your Store’s Speed Like a Pro</div>
+                  <div style={{ fontSize: 13, color: "#666" }}>Skyrocket your Shopify store’s performance without compromising design or features.</div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <button
+                  style={{
+                    background: "#4f46e5",
+                    color: "#fff",
+                    border: "none",
+                    padding: "8px 14px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                  }}
+                  type="button"
+                >
+                  Get 30% off
+                </button>
+              </div>
+            </div>
+         
+        </s-section>
+        <s-section>
+    <div style={{ display: "block", gap: 16, fontFamily: "Inter, system-ui, sans-serif" }}>
+    {/* extension setting */}
           <div
             style={{
               border: "1px solid #e1e1e1",
@@ -289,58 +343,6 @@ export default function Index() {
               App embed settings
             </button>
           </div>
-        </s-section>
-        <s-section>
-    <div style={{ display: "block", gap: 16, fontFamily: "Inter, system-ui, sans-serif" }}>
-      {/* Promo bar */}
-      <div
-        style={{
-          background: "#fff",
-          border: "1px solid #e6e6e6",
-          borderRadius: 8,
-          padding: 12,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 16,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 8,
-              background: "#faf5ff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <img src={logoUrl} alt="app" style={{ width: 28, height: 28, objectFit: "contain" }} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 600 }}>Improve your store's Google ranking</div>
-            <div style={{ fontSize: 13, color: "#666" }}>technical SEO, competitor website traffic analysis, etc.</div>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button
-            style={{
-              background: "#4f46e5",
-              color: "#fff",
-              border: "none",
-              padding: "8px 14px",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
-            type="button"
-          >
-            Get 30% off
-          </button>
-        </div>
-      </div>
 
       {/* Two columns */}
       <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
@@ -436,7 +438,7 @@ export default function Index() {
       {/* How it works */}
       <div style={{ background: "#fff", border: "1px solid #e6e6e6", borderRadius: 8, padding: 16, display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 16 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700 }}>How Ecom speed Page speed Optimizer works</div>
+          <div style={{ fontWeight: 700 }}>See How Speed Expert Works?</div>
           <div style={{ color: "#555", marginTop: 8, fontSize: 14 }}>
             When your customers hover a link for more than 65 ms, this app will automatically request the link's destination.
             This typically results in an average perceived reduction of latency of 200-300 ms.
@@ -463,28 +465,63 @@ export default function Index() {
             How does this feature work?
           </summary>
           <div style={{ color: "#555", marginTop: 8 }}>
-            When your customers hover a link for more than 65 ms, the app automatically
-            preloads the destination page.
+            When users hover a link for 65ms or more, the app preloads that page to speed up navigation.
           </div>
         </details>
 
         {/* FAQ 2 */}
         <details style={{ marginTop: 12 }}>
           <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-            Will this slow down my site?
+            How does this help my store?
           </summary>
           <div style={{ color: "#555", marginTop: 8 }}>
-            No, this feature optimizes perceived loading time without increasing server load.
+            Faster browsing improves user experience and can increase sales by up to 1% per 100ms saved.
           </div>
         </details>
 
         {/* FAQ 3 */}
         <details style={{ marginTop: 12 }}>
           <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-            Is this app free?
+            Why didn’t my speed score change?
           </summary>
           <div style={{ color: "#555", marginTop: 8 }}>
-            Yes! SEOAnt Page Speed Optimizer is forever free.
+            Prefetching speeds up perceived navigation but doesn’t affect initial load metrics in GTmetrix or PageSpeed Insights.
+          </div>
+          {/* FAQ 4 */}
+        </details>
+          <details style={{ marginTop: 12 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+            Is this safe for SEO and analytics?
+          </summary>
+          <div style={{ color: "#555", marginTop: 8 }}>
+            Yes, it follows SEO best practices and won’t cause false pageviews or indexing issues.
+          </div>
+        </details>
+        {/* FAQ 5 */}
+          <details style={{ marginTop: 12 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+            Does it work on mobile and slow networks?
+          </summary>
+          <div style={{ color: "#555", marginTop: 8 }}>
+            Yes, it detects data saver modes and connection speed to optimize prefetching.
+          </div>
+        </details>
+        {/* FAQ 6 */}
+          <details style={{ marginTop: 12 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+            Will it slow down my website?
+          </summary>
+          <div style={{ color: "#555", marginTop: 8 }}>
+            No, it’s a tiny script that preloads only on user interaction, keeping performance fast.
+          </div>
+        </details>
+        {/* FAQ 7  */}
+          <details style={{ marginTop: 12 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+            How can I test its impact?
+          </summary>
+          <div style={{ color: "#555", marginTop: 8 }}>
+            Compare Speed before and after using GTmetrix, PageSpeed Insights, or Chrome DevTools.
           </div>
         </details>
       </div>

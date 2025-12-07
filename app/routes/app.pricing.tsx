@@ -115,10 +115,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       console.error("----> [PRICING ACTION] Invalid form data:", { plan, price });
       return { error: "Invalid plan or price data" };
     }
-    // Create app subscription using Shopify GraphQL (2025 compliant)
+    // Create app subscription using Shopify GraphQL (2025 compliant) //test: true
     const mutation = `
       mutation appSubscriptionCreate($name: String!, $lineItems: [AppSubscriptionLineItemInput!]!, $returnUrl: URL!) {
-        appSubscriptionCreate(name: $name, lineItems: $lineItems, returnUrl: $returnUrl, test: true) {
+        appSubscriptionCreate(name: $name, lineItems: $lineItems, returnUrl: $returnUrl) {
           appSubscription {
             id
             status
