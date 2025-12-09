@@ -275,7 +275,7 @@ export default function PricingPage() {
   const isActivePlan = (planId: string) => currentPlan === planId;
   return (
     <s-page heading="Choose Your Plan">
-    <s-section heading="Pricing Plans">
+    <s-section heading="Pricing Plans hhh">
       {/* Error Banner */}
       {actionData?.error && (
         <s-banner tone="critical">
@@ -299,7 +299,7 @@ export default function PricingPage() {
           >
             <s-paragraph>
               <div style={{background:"none"}}>
-              <strong>Current Plan:</strong> {activeSubscription.name} (
+              <strong>Current Planaaa:</strong> {activeSubscription.name} (
               ${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
               </div>
             </s-paragraph>
@@ -365,13 +365,13 @@ export default function PricingPage() {
 
           const isSubmittingThisPlan = navigation.state === "submitting" && loadingPlan === plan.plan;
           return (
-            <div key={plan.plan} style={{ position: "relative",backgroundColor: "#fff",
+            <div key={plan.plan} className="box_styles" style={{ position: "relative",backgroundColor: "#fff",
                 border: isActive? "2px solid #ddd": "1px solid #ddd",
                 borderRadius: "8px",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                paddingLeft: "15px",
+                padding: "20px",
                 width:"250px",
-                height:"300px",
+                height:"auto",
               }}
             >
               <s-section>
@@ -406,16 +406,17 @@ export default function PricingPage() {
                   </s-button>
                   </Form>
                 </div>
-                <s-unordered-list>
+                <s-unordered-list >
                   {plan.features.map((feature, index) => (
-                    <s-list-item key={index}>
-                      <div
+                    <s-list-item key={index} >
+                      <div 
                         style={{
                           backgroundColor:"#F5F5F5",
                           borderRadius: "8px",
                           marginTop: "0.4rem",
                           textAlign: "left",
-                          padding:"8px 12px",
+                          padding:"4px 7px",
+                          fontSize: "12px",
                         }}
                       >
                         {feature}
