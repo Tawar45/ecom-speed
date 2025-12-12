@@ -27,7 +27,7 @@ export interface Plan {
     },
     {
       name: "Expert Plan ",
-      price: 20,
+      price: 9,
       plan: "Expert Plan — $9/month",
       features: [
       "All Features of the Free plan",
@@ -40,7 +40,7 @@ export interface Plan {
     },
     {
       name: "Expert Yearly Plan",
-      price: 30,
+      price: 79,
       plan: "Expert Plan—$79/year",
       features: [
         "Get approximately 27% off by choosing annual billing"
