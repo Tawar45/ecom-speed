@@ -8,7 +8,6 @@ import { d } from "node_modules/@react-router/dev/dist/routes-CZR-bKRt";
 import { handleShopSession } from "../utils/email.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
 
-
   try {
     const { session, admin } = await authenticate.admin(request);
 
@@ -277,22 +276,6 @@ export default function Index() {
                   <div style={{ fontSize: 13, color: "#666" }}>Skyrocket your Shopify store’s performance without compromising design or features.</div>
                 </div>
               </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <button
-                  style={{
-                    background: "#4f46e5",
-                    color: "#fff",
-                    border: "none",
-                    padding: "8px 14px",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                  }}
-                  type="button"
-                >
-                  Get 30% off
-                </button>
-              </div>
             </div>
          
         </s-section>
@@ -417,7 +400,19 @@ export default function Index() {
           <div style={{ fontWeight: 600, marginBottom: 12 }}>Site Speed Up</div>
           <img   src={embededApp ? '../../speed_on.png' : '../../speed_off.png'} alt="rocket" style={{ width: 220, height: 160, objectFit: "contain", opacity: 0.95 }} />
           <div style={{ marginTop: 6, background: embededApp ? "#dcfce7" : "#f3f4f6", color: embededApp ? "#16a34a" : "#555",fontSize: 12,padding: "2px 8px",borderRadius: 12,display: "inline-block",fontWeight: 600,}}>{embededApp ? "On" : "Off"}</div>        
-          <div style={{ marginTop: 12, fontSize: 13, color: "#666", textAlign: "center" }}>Enable Shopify embed to speed up your store</div>
+          {embededApp  ? (
+            <>
+              <div style={{ marginTop: 12, fontSize: 13, color: "#666", textAlign: "center" }}>
+                🎉 Congratulations! SEOAnt is speeding up your store.
+              </div>
+            </>
+            ) : (
+            <>
+              <div style={{ marginTop: 12, fontSize: 13, color: "#666", textAlign: "center" }}>
+                Enable Shopify embed to speed up your store.
+              </div>
+            </>
+            )}
           <button
             onClick={() => openEmbedSettings()}
             style={{
@@ -428,8 +423,7 @@ export default function Index() {
               borderRadius: 6,
               cursor: "pointer",
             }}
-            type="button"
-          >
+            type="button">
             ⚡ Speed up
           </button>
         </div>
@@ -445,12 +439,11 @@ export default function Index() {
           </div>
 
           <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-            <button style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d1d1", background: "#fff", cursor: "pointer" }} type="button">Preview</button>
             <button style={{ padding: "8px 12px", borderRadius: 6, border: "none", background: "#fff", color: "#4f46e5", cursor: "pointer" }} type="button"  onClick={() => setShowVideoModal(true)}>Watch the video</button>
           </div>
         </div>
 
-        <div style={{ width: 180 }}>
+        <div style={{ width: 100 }}>
           <img src={logoUrl} alt="thumb" style={{ width: "100%", height: 92, objectFit: "cover", borderRadius: 6 }} />
         </div>
       </div>

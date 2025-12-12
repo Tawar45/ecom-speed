@@ -362,7 +362,6 @@ export default function PricingPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",gap: "0.5rem",marginTop: "1rem",}}>
         {plans.map((plan) => {
           const isActive = isActivePlan(plan.plan);
-
           const isSubmittingThisPlan = navigation.state === "submitting" && loadingPlan === plan.plan;
           return (
             <div key={plan.plan} className="box_styles" style={{ position: "relative",backgroundColor: "#fff",
@@ -382,7 +381,7 @@ export default function PricingPage() {
                 </div>
 
                 {/* Price */}
-                <s-paragraph>
+                {/* <s-paragraph>
                   <div style={{ textAlign: "center", marginBottom: "1rem" }}>
                     <strong style={{ fontSize: "2rem", fontWeight: "700",}}>
                       ${plan.price}
@@ -391,7 +390,7 @@ export default function PricingPage() {
                       /mo
                     </span>
                   </div>
-                </s-paragraph>
+                </s-paragraph> */}
                 {/* Subscribe Button */}
                 <div style={{ textAlign: "center", marginBottom: "1.2rem" }}>
                   <Form method="post" onSubmit={() => setLoadingPlan(plan.plan)} >
@@ -402,7 +401,7 @@ export default function PricingPage() {
                     variant={isActive ? "secondary" : "primary"}
                     loading={isSubmittingThisPlan}
                     disabled={isSubmittingThisPlan || isActive}>
-                    {isActive ? "Current Plan" : `Subscribe to ${plan.name}`}
+                    {isActive ? "Current Plan" : `Subscribe to ${plan.plan}`}
                   </s-button>
                   </Form>
                 </div>
