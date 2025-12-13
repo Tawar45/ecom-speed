@@ -4,7 +4,7 @@ import { plans } from "../data/plans";
 import { authenticate } from "../shopify.server";
 import createApp from '@shopify/app-bridge';
 import { Redirect } from '@shopify/app-bridge/actions';
-import { useEffect, useState , useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useFetcher } from "react-router";
 import { sendWelcomeEmail } from "../utils/email.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
@@ -13,7 +13,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const url = new URL(request.url);
   const chargeId = url.searchParams.get("charge_id");
-console.log(chargeId,'--------------------chargeId in pricing loader');
+  console.log(chargeId, '--------------------chargeId in pricing loader');
   const combinedQuery = `
     query {
       shop {
@@ -49,12 +49,12 @@ console.log(chargeId,'--------------------chargeId in pricing loader');
     const response = await admin.graphql(combinedQuery);
     const data = await response.json() as any;
     const activeSubscriptions = data.data?.currentAppInstallation?.activeSubscriptions || [];
-      // If there's an active subscription, inspect its status and optionally send a welcome email.
+    // If there's an active subscription, inspect its status and optionally send a welcome email.
     const activeSubscription = activeSubscriptions.length > 0 ? activeSubscriptions[0] : null;
     if (activeSubscription) {
-     // Normalize status (Shopify may use 'ACTIVE', 'active', 'accepted', etc.)
+      // Normalize status (Shopify may use 'ACTIVE', 'active', 'accepted', etc.)
       const status = (activeSubscription.status ?? "").toString().toLowerCase();
-     // Decide which statuses you consider successful/final for sending welcome email
+      // Decide which statuses you consider successful/final for sending welcome email
       const successStatuses = ["active", "accepted", "paid", "success"];
 
       if (successStatuses.includes(status) && chargeId) {
@@ -105,7 +105,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const { admin, session } = await authenticate.admin(request);
     const storeName = session.shop.replace('.myshopify.com', '');
     const APP_HANDLE = process.env.VITE_SHOPIFY_APP_HANDLE || 'ecom-page-speed-expert';
-     // Build dynamic return URL
+    // Build dynamic return URL
     let returnUrl = `https://admin.shopify.com/store/${storeName}/apps/${APP_HANDLE}/app/pricing`;
     console.log("----> [PRICING ACTION] Return URL:", returnUrl);
     const formData = await request.formData();
@@ -200,7 +200,7 @@ export default function PricingPage() {
           if (data.success) {
             const newUrl = location.pathname;
             window.history.replaceState({}, "", newUrl);
-          //  sendWelcomeEmail('export-dev.myshopify.com','basic plan',10); 
+            //  sendWelcomeEmail('export-dev.myshopify.com','basic plan',10); 
           }
         })
         .catch((error) => {
@@ -230,7 +230,7 @@ export default function PricingPage() {
     setShowConfirm(false);
   };
 
-  
+
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const loaderData = useLoaderData<typeof loader>();
@@ -239,7 +239,7 @@ export default function PricingPage() {
     const storeName = loaderData.shop?.replace('.myshopify.com', '');
     if (actionData?.confirmationUrl && loaderData.shopifyApiKey) {
       // Get host from URL search params
-      let  host = btoa('admin.shopify.com/store/'+storeName);
+      let host = btoa('admin.shopify.com/store/' + storeName);
       if (!host) {
         console.error("No host parameter found in URL");
         return;
@@ -274,226 +274,250 @@ export default function PricingPage() {
 
   const isActivePlan = (planId: string) => currentPlan === planId;
   return (
-    
-    
+
+
     <s-page heading="Choose Your Plan">
-  <s-section heading="Plans">
-    {/* Error Banner */}
-    {actionData?.error && (
-      <s-banner tone="critical">
-        <s-paragraph>Error: {actionData.error}</s-paragraph>
-      </s-banner>
-    )}
+      <s-section heading="Plans">
+        {/* Error Banner */}
+        {actionData?.error && (
+          <s-banner tone="critical">
+            <s-paragraph>Error: {actionData.error}</s-paragraph>
+          </s-banner>
+        )}
 
-    {/* Current Plan Banner with Cancel Button */}
-    {activeSubscription && (
-      <s-banner status="info" style={{ border: '1px solid #b2dff8', background: '#eaf6ff', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "1rem",
-          }}
-        >
-          <s-paragraph style={{ margin: 0, fontSize: '16px', color: '#03549a' }}>
-            <strong>Current Plan:</strong> {activeSubscription.name} (
-            ${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
-          </s-paragraph>
-
-          <fetcher.Form method="post" action="/app/billing/cancel" ref={formRef}>
-            <s-button type="submit" variant="primary" tone="critical" loading={isSubmitting} disabled={isSubmitting} onClick={handleCancelClick}>
-              Cancel Subscription
-            </s-button>
-          </fetcher.Form>
-        </div>
-      </s-banner>
-    )}
-
-    {/* Confirmation Popup */}
-    {showConfirm && (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0, 0, 0, 0.6)",
-          backdropFilter: "blur(4px)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 1000,
-        }}
-      >
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: "12px",
-            padding: "32px",
-            width: "90%",
-            maxWidth: "450px",
-            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.15)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#202223' }}>Confirm Cancellation</h3>
-            <button onClick={handleClosePopup} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6d7175', padding: 0, lineHeight: 1 }}>✖</button>
-          </div>
-          <p style={{ margin: 0, fontSize: '16px', color: '#6d7175' }}>Are you sure you want to cancel your subscription? You will lose access to all premium features at the end of your billing period.</p>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
-            <s-button onClick={handleClosePopup}>No, Go Back</s-button>
-            <s-button
-              onClick={handleConfirmCancel}
-              variant="primary"
-              tone="critical"
-              loading={isSubmitting}
+        {/* Current Plan Banner with Cancel Button */}
+        {activeSubscription && (
+          <s-banner status="info" style={{ border: '1px solid #b2dff8', background: '#eaf6ff', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "1rem",
+              }}
             >
-              {isSubmitting ? "Cancelling..." : "Yes, Cancel"}
-            </s-button>
-          </div>
-        </div>
-      </div>
-    )}
+              <s-paragraph style={{ margin: 0, fontSize: '16px', color: '#03549a' }}>
+                <strong>Current Plan:</strong> {activeSubscription.name} (
+                ${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
+              </s-paragraph>
 
-    {/* Pricing Plan Cards */}
-    <div
-      className="pricing-grid"
-      style={{
-        display: "grid",
-        gap: "24px",
-        marginTop: "2rem",
-        // Default for mobile is 1 column
-        gridTemplateColumns: "1fr",
-      }}
-    >
-      {plans.map((plan, index) => {
-        const isActive = isActivePlan(plan.plan);
-        const isSubmittingThisPlan = navigation.state === "submitting" && loadingPlan === plan.plan;
-        
-        // Define plan types based on index
-        const isFree = index === 0;
-        const isPopular = index === 1;
-        const isRecommended = index === 2;
+              <fetcher.Form method="post" action="/app/billing/cancel" ref={formRef}>
+                <s-button type="submit" variant="primary" tone="critical" loading={isSubmitting} disabled={isSubmitting} onClick={handleCancelClick}>
+                  Cancel Subscription
+                </s-button>
+              </fetcher.Form>
+            </div>
+          </s-banner>
+        )}
 
-        return (
+        {/* Confirmation Popup */}
+        {showConfirm && (
           <div
-            key={plan.plan}
-            className="pricing-card"
             style={{
-              position: "relative",
-              backgroundColor: "#fff",
-              border: isRecommended ? "2px solid #008060" : "1px solid #e1e3e5",
-              borderRadius: "12px",
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-              padding: isRecommended ? "40px 24px" : "32px 24px",
-              // Ensures the card fills its grid cell and includes padding/border in its width
-              boxSizing: "border-box",
-              width: "100%",
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0, 0, 0, 0.6)",
+              backdropFilter: "blur(4px)",
               display: "flex",
-              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 1000,
             }}
           >
-            {/* Plan Badge */}
-            {isPopular && !isActive && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "-12px",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  backgroundColor: "#059669",
-                  color: "#fff",
-                  padding: "4px 16px",
-                  borderRadius: "12px",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                }}
-              >
-                POPULAR
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: "12px",
+                padding: "32px",
+                width: "90%",
+                maxWidth: "450px",
+                boxShadow: "0 10px 25px rgba(0, 0, 0, 0.15)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#202223' }}>Confirm Cancellation</h3>
+                <button onClick={handleClosePopup} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6d7175', padding: 0, lineHeight: 1 }}>✖</button>
               </div>
-            )}
-            {isRecommended && !isActive && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "-12px",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  backgroundColor: "#008060",
-                  color: "#fff",
-                  padding: "4px 16px",
-                  borderRadius: "12px",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                }}
-              >
-                RECOMMENDED
+              <p style={{ margin: 0, fontSize: '16px', color: '#6d7175' }}>Are you sure you want to cancel your subscription? You will lose access to all premium features at the end of your billing period.</p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
+                <s-button onClick={handleClosePopup}>No, Go Back</s-button>
+                <s-button
+                  onClick={handleConfirmCancel}
+                  variant="primary"
+                  tone="critical"
+                  loading={isSubmitting}
+                >
+                  {isSubmitting ? "Cancelling..." : "Yes, Cancel"}
+                </s-button>
               </div>
-            )}
-
-            <div style={{ textAlign: "center", marginBottom: "24px" }}>
-              <h2 style={{ fontSize: "1.5rem", fontWeight: "700", color: "#202223", letterSpacing: "-0.5px", margin: '0 0 8px 0' }}>
-                {plan.name}
-              </h2>
-              {isFree ? (
-                <div style={{ fontSize: "2.5rem", fontWeight: "700", color: "#202223" }}>
-                  Free
-                </div>
-              ) : (
-                <div style={{ fontSize: "2.5rem", fontWeight: "700", color: "#202223" }}>
-                  ${plan.price}
-                  <span style={{ fontSize: "1rem", color: "#6d7175", fontWeight: "400" }}>/month</span>
-                </div>
-              )}
             </div>
-
-            {/* Big Save Tag for Recommended Plan */}
-            {isRecommended && (
-              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                <span style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '4px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '600' }}>
-                  💰 Big Save
-                </span>
-              </div>
-            )}
-
-            {/* Subscribe Button */}
-            <Form method="post" onSubmit={() => setLoadingPlan(plan.plan)} style={{ marginBottom: '24px' }}>
-              <input type="hidden" name="plan" value={plan.plan} />
-              <input type="hidden" name="price" value={plan.price} />
-              <s-button
-                type="submit"
-                variant={isActive ? "monochrome" : (isFree ? "secondary" : "primary")}
-                loading={isSubmittingThisPlan}
-                disabled={isSubmittingThisPlan || isActive}
-                fullWidth
-                size="large"
-              >
-                {isActive ? "Current Plan" : (isFree ? "Get Started" : `Subscribe to ${plan.plan}`)}
-              </s-button>
-            </Form>
-
-            {/* Features List */}
-            <s-unordered-list style={{ listStyle: 'none', padding: 0, margin: 0, flexGrow: 1 }}>
-              {plan.features.map((feature, index) => (
-                <s-list-item key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', fontSize: '14px', color: '#42474c', wordBreak: 'break-word' }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ marginRight: '12px', flexShrink: 0 }}>
-                    <circle cx="8" cy="8" r="8" fill="#008060" />
-                    <path d="M4 8L7 11L12 5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  {feature}
-                </s-list-item>
-              ))}
-            </s-unordered-list>
           </div>
-        );
-      })}
-    </div>
+        )}
 
-    {/* Responsive Design & Grid Styles */}
-    <style>{`
+        {/* Pricing Plan Cards */}
+        <div
+          className="pricing-grid"
+          style={{
+            display: "grid",
+            gap: "24px",
+            marginTop: "2rem",
+            // Default for mobile is 1 column
+            gridTemplateColumns: "1fr",
+          }}
+        >
+          {plans.map((plan, index) => {
+            const isActive = isActivePlan(plan.plan);
+            const isSubmittingThisPlan = navigation.state === "submitting" && loadingPlan === plan.plan;
+
+            // Define plan types based on index
+            const isFree = index === 0;
+            const isPopular = index === 1;
+            const isRecommended = index === 2;
+
+            return (
+              <div
+                key={plan.plan}
+                className="pricing-card"
+                style={{
+                  position: "relative",
+                  backgroundColor: "#fff",
+                  border: isRecommended ? "2px solid #008060" : "1px solid #e1e3e5",
+                  borderRadius: "12px",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+                  padding: isRecommended ? "40px 24px" : "32px 24px",
+                  // Ensures the card fills its grid cell and includes padding/border in its width
+                  boxSizing: "border-box",
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                {/* Plan Badge */}
+                {isPopular && !isActive && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "-12px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      backgroundColor: "#059669",
+                      color: "#fff",
+                      padding: "4px 16px",
+                      borderRadius: "12px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    POPULAR
+                  </div>
+                )}
+                {isRecommended && !isActive && (
+                  <div style={{
+                    position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)", backgroundColor: "#008060", color: "#fff",
+                    padding: "4px 16px",
+                    borderRadius: "12px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                  }}
+                  >
+                    RECOMMENDED
+                  </div>
+                )}
+
+                <div style={{ textAlign: "center", marginBottom: "24px" }}>
+                  <h2 style={{ fontSize: "1.5rem", fontWeight: "700", color: "#202223", letterSpacing: "-0.5px", margin: '0 0 8px 0' }}>
+                    {plan.name}
+                  </h2>
+                  {isFree ? (
+                    <div style={{ fontSize: "2rem", fontWeight: "700", color: "#202223", marginTop: "20px" }}>
+                      Free
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: "2rem", fontWeight: "700", color: "#202223", marginTop: "20px" }}>
+                      ${plan.price}
+                      <span style={{ fontSize: "1rem", color: "#6d7175", fontWeight: "400" }}>/month</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Big Save Tag for Recommended Plan */}
+                {isRecommended && (
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <span style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '4px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '600' }}>
+                      💰 Big Save
+                    </span>
+                  </div>
+                )}
+
+                {/* Subscribe Button */}
+                <Form method="post" onSubmit={() => setLoadingPlan(plan.plan)} style={{ marginBottom: '24px', textAlign: 'center' }}>
+                  <input type="hidden" name="plan" value={plan.plan} />
+                  <input type="hidden" name="price" value={plan.price} />
+                  <s-button
+                    type="submit"
+                    variant={isActive ? "monochrome" : (isFree ? "secondary" : "primary")}
+                    loading={isSubmittingThisPlan}
+                    disabled={isSubmittingThisPlan || isActive}
+                    fullWidth
+                    size="large"
+                  >
+                    {isActive ? "Current Plan" : (isFree ? "Get Started" : `Subscribe to ${plan.plan}`)}
+                  </s-button>
+                </Form>
+
+                {/* Features List */}
+                <ul
+                  style={{
+                    listStyle: 'none',
+                    padding: 0,
+                    margin: 0,
+                    flexGrow: 1,
+                  }}
+                >
+                  {plan.features.map((feature, index) => (
+                    <li
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginBottom: '12px',
+                        fontSize: '14px',
+                        color: '#42474c',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        style={{ marginRight: '12px', flexShrink: 0 }}
+                      >
+                        <circle cx="8" cy="8" r="8" fill="#008060" />
+                        <path
+                          d="M4 8L7 11L12 5"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Responsive Design & Grid Styles */}
+        <style>{`
       /* For screens wider than 768px (Desktop): 3 columns */
       @media (min-width: 769px) {
         .pricing-grid {
@@ -513,165 +537,165 @@ export default function PricingPage() {
         }
       }
     `}</style>
-  </s-section>
-</s-page>
+      </s-section>
+    </s-page>
 
-  //   <s-page heading="Choose Your Plan">
-  //   <s-section heading="Plans">
-  //     {/* Error Banner */}
-  //     {actionData?.error && (
-  //       <s-banner tone="critical">
-  //         <s-paragraph>Error: {actionData.error}</s-paragraph>
-  //       </s-banner>
-  //     )}
+    //   <s-page heading="Choose Your Plan">
+    //   <s-section heading="Plans">
+    //     {/* Error Banner */}
+    //     {actionData?.error && (
+    //       <s-banner tone="critical">
+    //         <s-paragraph>Error: {actionData.error}</s-paragraph>
+    //       </s-banner>
+    //     )}
 
-  //     {/* Current Plan Banner with Cancel Button (side by side) */}
-  //     {activeSubscription && (
-  //       <s-banner >
-  //         <div
-  //           style={{
-  //             display: "flex",
-  //             justifyContent: "space-between",
-  //             alignItems: "center",
-  //             flexWrap: "wrap",
-  //             gap: "0.5rem",
-  //             background: "none"
-              
-  //           }}
-  //         >
-  //           <s-paragraph>
-  //             <div style={{background:"none"}}>
-  //             <strong>Current Planaaa:</strong> {activeSubscription.name} (
-  //             ${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
-  //             </div>
-  //           </s-paragraph>
+    //     {/* Current Plan Banner with Cancel Button (side by side) */}
+    //     {activeSubscription && (
+    //       <s-banner >
+    //         <div
+    //           style={{
+    //             display: "flex",
+    //             justifyContent: "space-between",
+    //             alignItems: "center",
+    //             flexWrap: "wrap",
+    //             gap: "0.5rem",
+    //             background: "none"
 
-  //           <fetcher.Form method="post" action="/app/billing/cancel" ref={formRef}>
-  //             <s-button type="button" variant="primary" tone="critical" loading={isSubmitting} disabled={isSubmitting}
-  //               onClick={handleCancelClick}>
-  //               Yes, Cancel Subscription
-  //             </s-button>
-  //         </fetcher.Form>
+    //           }}
+    //         >
+    //           <s-paragraph>
+    //             <div style={{background:"none"}}>
+    //             <strong>Current Planaaa:</strong> {activeSubscription.name} (
+    //             ${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
+    //             </div>
+    //           </s-paragraph>
 
-  //     {/* Confirmation Popup */}
-  //     {showConfirm && (
-  //       <div
-  //         style={{
-  //           position: "fixed",
-  //           inset: 0,
-  //           background: "rgba(0,0,0,0.5)",
-  //           display: "flex",
-  //           justifyContent: "center",
-  //           alignItems: "center",
-  //           zIndex: 1000,
-  //         }}
-  //       >
-  //         <div
-  //           style={{
-  //             background: "#fff",
-  //             borderRadius: "8px",
-  //             padding: "20px",
-  //             width: "400px",
-  //             boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
-  //           }}
-  //         >
-  //           <h3>Confirm Cancellation</h3>
-  //           <p>Are you sure you want to cancel your subscription?</p>
+    //           <fetcher.Form method="post" action="/app/billing/cancel" ref={formRef}>
+    //             <s-button type="button" variant="primary" tone="critical" loading={isSubmitting} disabled={isSubmitting}
+    //               onClick={handleCancelClick}>
+    //               Yes, Cancel Subscription
+    //             </s-button>
+    //         </fetcher.Form>
 
-  //           <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
-  //             <button onClick={handleClosePopup} style={{cursor: "pointer"}}>No, Go Back</button>
-  //             <button
-  //               onClick={handleConfirmCancel}
-  //               style={{
-  //                 background: "#c53030",
-  //                 color: "white",
-  //                 border: "none",
-  //                 padding: "8px 12px",
-  //                 borderRadius: "4px",
-  //                 cursor: "pointer"
-  //               }}
-  //             >
-  //               {isSubmitting ? "Cancelling..." : "Yes, Cancel"}
-  //             </button>
-  //           </div>
-  //         </div>
-  //       </div>
-  //     )}
-  //         </div>
-  //       </s-banner>
-  //     )}
-  //     {/* Pricing Plan Cards */}
-  //     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",gap: "0.5rem",marginTop: "1rem",}}>
-  //       {plans.map((plan) => {
-  //         const isActive = isActivePlan(plan.plan);
-  //         const isSubmittingThisPlan = navigation.state === "submitting" && loadingPlan === plan.plan;
-  //         return (
-  //           <div key={plan.plan} className="box_styles" style={{ position: "relative",backgroundColor: "#fff",
-  //               border: isActive? "2px solid #ddd": "1px solid #ddd",
-  //               borderRadius: "8px",
-  //               boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-  //               padding: "20px",
-  //               width:"250px",
-  //               height:"auto",
-  //             }}
-  //           >
-  //             <s-section>
-  //               <div style={{ textAlign: "center" }}>
-  //                 <h2 style={{ fontSize: "1rem", fontWeight: "600",color: "#333",letterSpacing: "0.5px",}}>
-  //                   {plan.name} 
-  //                 </h2>
-  //               </div>
+    //     {/* Confirmation Popup */}
+    //     {showConfirm && (
+    //       <div
+    //         style={{
+    //           position: "fixed",
+    //           inset: 0,
+    //           background: "rgba(0,0,0,0.5)",
+    //           display: "flex",
+    //           justifyContent: "center",
+    //           alignItems: "center",
+    //           zIndex: 1000,
+    //         }}
+    //       >
+    //         <div
+    //           style={{
+    //             background: "#fff",
+    //             borderRadius: "8px",
+    //             padding: "20px",
+    //             width: "400px",
+    //             boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
+    //           }}
+    //         >
+    //           <h3>Confirm Cancellation</h3>
+    //           <p>Are you sure you want to cancel your subscription?</p>
 
-  //               {/* Price */}
-  //               {/* <s-paragraph>
-  //                 <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-  //                   <strong style={{ fontSize: "2rem", fontWeight: "700",}}>
-  //                     ${plan.price}
-  //                   </strong>
-  //                   <span style={{fontSize: "0.9rem",color: "#666",marginLeft: "2px",}}>
-  //                     /mo
-  //                   </span>
-  //                 </div>
-  //               </s-paragraph> */}
-  //               {/* Subscribe Button */}
-  //               <div style={{ textAlign: "center", marginBottom: "1.2rem" }}>
-  //                 <Form method="post" onSubmit={() => setLoadingPlan(plan.plan)} >
-  //                   <input type="hidden" name="plan" value={plan.plan} />
-  //                   <input type="hidden" name="price" value={plan.price} />
-  //                   <s-button
-  //                   type="submit"
-  //                   variant={isActive ? "secondary" : "primary"}
-  //                   loading={isSubmittingThisPlan}
-  //                   disabled={isSubmittingThisPlan || isActive}>
-  //                   {isActive ? "Current Plan" : `Subscribe to ${plan.plan}`}
-  //                 </s-button>
-  //                 </Form>
-  //               </div>
-  //               <s-unordered-list >
-  //                 {plan.features.map((feature, index) => (
-  //                   <s-list-item key={index} >
-  //                     <div 
-  //                       style={{
-  //                         backgroundColor:"#F5F5F5",
-  //                         borderRadius: "8px",
-  //                         marginTop: "0.4rem",
-  //                         textAlign: "left",
-  //                         padding:"4px 7px",
-  //                         fontSize: "12px",
-  //                       }}
-  //                     >
-  //                       {feature}
-  //                     </div>
-  //                   </s-list-item>
-  //                 ))}
-  //               </s-unordered-list>  
-  //             </s-section>
-  //           </div>
-  //         );
-  //       })}
-  //     </div>
-  //   </s-section>
-  // </s-page>
+    //           <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
+    //             <button onClick={handleClosePopup} style={{cursor: "pointer"}}>No, Go Back</button>
+    //             <button
+    //               onClick={handleConfirmCancel}
+    //               style={{
+    //                 background: "#c53030",
+    //                 color: "white",
+    //                 border: "none",
+    //                 padding: "8px 12px",
+    //                 borderRadius: "4px",
+    //                 cursor: "pointer"
+    //               }}
+    //             >
+    //               {isSubmitting ? "Cancelling..." : "Yes, Cancel"}
+    //             </button>
+    //           </div>
+    //         </div>
+    //       </div>
+    //     )}
+    //         </div>
+    //       </s-banner>
+    //     )}
+    //     {/* Pricing Plan Cards */}
+    //     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",gap: "0.5rem",marginTop: "1rem",}}>
+    //       {plans.map((plan) => {
+    //         const isActive = isActivePlan(plan.plan);
+    //         const isSubmittingThisPlan = navigation.state === "submitting" && loadingPlan === plan.plan;
+    //         return (
+    //           <div key={plan.plan} className="box_styles" style={{ position: "relative",backgroundColor: "#fff",
+    //               border: isActive? "2px solid #ddd": "1px solid #ddd",
+    //               borderRadius: "8px",
+    //               boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    //               padding: "20px",
+    //               width:"250px",
+    //               height:"auto",
+    //             }}
+    //           >
+    //             <s-section>
+    //               <div style={{ textAlign: "center" }}>
+    //                 <h2 style={{ fontSize: "1rem", fontWeight: "600",color: "#333",letterSpacing: "0.5px",}}>
+    //                   {plan.name} 
+    //                 </h2>
+    //               </div>
+
+    //               {/* Price */}
+    //               {/* <s-paragraph>
+    //                 <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+    //                   <strong style={{ fontSize: "2rem", fontWeight: "700",}}>
+    //                     ${plan.price}
+    //                   </strong>
+    //                   <span style={{fontSize: "0.9rem",color: "#666",marginLeft: "2px",}}>
+    //                     /mo
+    //                   </span>
+    //                 </div>
+    //               </s-paragraph> */}
+    //               {/* Subscribe Button */}
+    //               <div style={{ textAlign: "center", marginBottom: "1.2rem" }}>
+    //                 <Form method="post" onSubmit={() => setLoadingPlan(plan.plan)} >
+    //                   <input type="hidden" name="plan" value={plan.plan} />
+    //                   <input type="hidden" name="price" value={plan.price} />
+    //                   <s-button
+    //                   type="submit"
+    //                   variant={isActive ? "secondary" : "primary"}
+    //                   loading={isSubmittingThisPlan}
+    //                   disabled={isSubmittingThisPlan || isActive}>
+    //                   {isActive ? "Current Plan" : `Subscribe to ${plan.plan}`}
+    //                 </s-button>
+    //                 </Form>
+    //               </div>
+    //               <s-unordered-list >
+    //                 {plan.features.map((feature, index) => (
+    //                   <s-list-item key={index} >
+    //                     <div 
+    //                       style={{
+    //                         backgroundColor:"#F5F5F5",
+    //                         borderRadius: "8px",
+    //                         marginTop: "0.4rem",
+    //                         textAlign: "left",
+    //                         padding:"4px 7px",
+    //                         fontSize: "12px",
+    //                       }}
+    //                     >
+    //                       {feature}
+    //                     </div>
+    //                   </s-list-item>
+    //                 ))}
+    //               </s-unordered-list>  
+    //             </s-section>
+    //           </div>
+    //         );
+    //       })}
+    //     </div>
+    //   </s-section>
+    // </s-page>
 
 
 
