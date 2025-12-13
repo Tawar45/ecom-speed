@@ -10,7 +10,7 @@ export interface Plan {
   export const plans: Plan[] = [
     {
       name: "Free Forever Plan",
-      price: 10,
+      price: 0,
       plan: "basic",
       features: [
   "Speed Optimization on the Homepage",
@@ -28,7 +28,7 @@ export interface Plan {
     {
       name: "Expert Plan ",
       price: 9,
-      plan: "Expert Plan — $9/month",
+      plan: "Expert Plan",
       features: [
       "All Features of the Free plan",
       "Speed Optimization on all pages across the store",
@@ -41,7 +41,7 @@ export interface Plan {
     {
       name: "Expert Yearly Plan",
       price: 79,
-      plan: "Expert Plan—$79/year",
+      plan: "Yearly Plan",
       features: [
         "Get approximately 27% off by choosing annual billing"
       ],
