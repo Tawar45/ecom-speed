@@ -13,7 +13,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const url = new URL(request.url);
   const chargeId = url.searchParams.get("charge_id");
-  console.log(chargeId, '--------------------chargeId in pricing loader');
   const combinedQuery = `
     query {
       shop {

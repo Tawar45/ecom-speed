@@ -37,6 +37,9 @@ model Shop {
   accessToken  String
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+  email                  String?        // receiver email
+  weeklyEmailEnabled     Boolean        @default(true)
+  lastWeeklyEmailAt      DateTime?      // last sent timestamp
   subscriptions Subscription[]
   welcomeEmailSent  Boolean @default(false)
 

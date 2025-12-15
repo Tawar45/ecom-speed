@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { getShopInfo } from "./graphql-query";
 import nodemailer from 'nodemailer';
 import { welcomeEmailTemplate } from "./welcome_template";
+import { weeklyEmailTemplate } from "./weekly_template";
 export interface WelcomeEmailData {
   shopDomain: string;
   plan: string;
@@ -92,6 +93,32 @@ export async function sendWelcomeEmail(
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Welcome to ${planName} Plan!`,
     html: welcomeEmailTemplate({ shopName: shopDomain, planName: 'planName' }),
+  };
+
+  try {
+    console.log('📤 [EMAIL] Sending welcome email via SMTP...');
+    await transporter.sendMail(msg);
+    console.log(`✅ [EMAIL] Welcome email sent successfully to ${shopDomain}`);
+  } catch (error) {
+    console.error('❌ [EMAIL] Error sending welcome email:', error);
+    throw error;
+  }
+}
+export async function sendWeekEmail(
+  shopDomain: string,
+  recivederEmail: string
+): Promise<void> {
+
+  if (!process.env.SMTP_FROM_EMAIL) {
+    console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping email');
+    return;
+  }
+
+  const msg = {
+    to: recivederEmail,  //'rohit45.tawar@gmail.com',
+    from: process.env.SMTP_FROM_EMAIL,
+    subject: `Weekly Report`,
+    html: weeklyEmailTemplate({ shopName: shopDomain, }),
   };
 
   try {

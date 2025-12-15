@@ -27,6 +27,9 @@ CREATE TABLE `Shop` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
     `welcomeEmailSent` BOOLEAN NOT NULL DEFAULT false,
+    `email` VARCHAR(255) NULL,
+    `lastWeeklyEmailAt` DATETIME NULL,
+    `weeklyEmailEnabled` BOOLEAN DEFAULT true,
     UNIQUE INDEX `Shop_domain_key`(`domain`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
