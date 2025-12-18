@@ -276,7 +276,10 @@ export default function PricingPage() {
 
 
     <s-page heading="Choose Your Plan">
-      <s-section heading="Plans">
+      <s-section>
+        <h2 style={{ fontSize: "28px", fontWeight: "600", marginBottom: "16px" }}>
+         Plans
+        </h2>
         {/* Error Banner */}
         {actionData?.error && (
           <s-banner tone="critical">
