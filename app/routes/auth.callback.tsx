@@ -17,14 +17,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (!existingShop?.welcomeEmailSent) {
         //  Send email
         const ShopInfoResult = await getShopInfo(admin);
+         const shopEmail = ShopInfoResult?.email ?? null;
         await sendWelcomeEmailInstalledMaill(ShopInfoResult);
 
         //  Use correct upsert shape
         await prisma.shop.upsert({
             where: { domain: session.shop }, // use `domain` field
-            update: { welcomeEmailSent: true, accessToken: session.accessToken },
+            update: { welcomeEmailSent: true, accessToken: session.accessToken,  email: shopEmail },
             create: {
                 domain: session.shop,
+                email: shopEmail, 
                 accessToken: session.accessToken,
                 welcomeEmailSent: true,
             },
@@ -32,12 +34,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     } else {
     }
-
-    //  Redirect to app home
-    //   return new Response(null, {
-    //     status: 302,
-    //     headers: { Location: "/" },
-    //   });
     return {
         success: true,
     }
