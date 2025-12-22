@@ -521,10 +521,10 @@ export default function Index() {
                         </div>
                     </>
                 )}
+                <div className="speedup_btn">
                 <button
                     onClick={() => openEmbedSettings()}
                     style={{
-                        marginTop: 16,
                         background: embededApp ? "#fbbf24" : "#059669",
                         color: "#fff",
                         border: "none",
@@ -542,22 +542,22 @@ export default function Index() {
                     ⚡ {embededApp ? 'Manage Settings' : 'Speed Up My Store'}
                 </button>
                 <button
-  type="button"
-  onClick={fetchThemeData}
-  disabled={loadingThemes}
-  style={{
-    marginLeft: 12,
-    backgroundColor: "#fff",
-    border: "1px solid #c7c7c7",
-    borderRadius: 6,
-    padding: "8px 14px",
-    fontSize: 13,
-    fontWeight: 500,
-    cursor: loadingThemes ? "not-allowed" : "pointer",
-  }}
->
-  🔄 {loadingThemes ? "Checking…" : "Refresh status"}
-</button>
+                type="button"
+                onClick={fetchThemeData}
+                disabled={loadingThemes}
+                style={{
+                  backgroundColor: "#fff",
+                  border: "1px solid #c7c7c7",
+                  borderRadius: 6,
+                  padding: "8px 14px",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: loadingThemes ? "not-allowed" : "pointer",
+                }}
+              >
+                🔄 {loadingThemes ? "Checking…" : "Refresh status"}
+              </button>
+              </div>
 
             </div>
         </div>
@@ -633,6 +633,9 @@ export default function Index() {
             <div style={{ fontWeight: 700, fontSize: "18px", color: "#202223" }}>Frequently Asked Questions</div>
             
             <style>{`
+            .speedup_btn {     display: flex;
+    gap: 20px;
+    margin-top: 16px; }
                 .faq-item {
                     border-top: 1px solid #e1e3e5;
                     transition: box-shadow 0.2s ease;
