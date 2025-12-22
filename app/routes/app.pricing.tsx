@@ -289,7 +289,7 @@ export default function PricingPage() {
 
         {/* Current Plan Banner with Cancel Button */}
         {activeSubscription && (
-          <s-banner status="info" style={{ border: '1px solid #b2dff8', background: '#eaf6ff', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
+          <s-banner>
             <div
               style={{
                 display: "flex",
@@ -299,7 +299,7 @@ export default function PricingPage() {
                 gap: "1rem",
               }}
             >
-              <s-paragraph style={{ margin: 0, fontSize: '16px', color: '#03549a' }}>
+              <s-paragraph >
                 <strong>Current Plan:</strong> {activeSubscription.name} (
                 ${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
               </s-paragraph>
@@ -459,9 +459,11 @@ export default function PricingPage() {
                 <Form method="post" onSubmit={() => setLoadingPlan(plan.plan)} style={{ marginBottom: '24px', textAlign: 'center' }}>
                   <input type="hidden" name="plan" value={plan.plan} />
                   <input type="hidden" name="price" value={plan.price} />
+
+                  
                   <s-button
                     type="submit"
-                    variant={isActive ? "monochrome" : (isFree ? "secondary" : "primary")}
+                    variant={isActive ? "plain" : (isFree ? "secondary" : "primary")}
                     loading={isSubmittingThisPlan}
                     disabled={isSubmittingThisPlan || isActive}
                     fullWidth

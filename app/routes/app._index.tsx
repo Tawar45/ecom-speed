@@ -17,7 +17,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     // Check for pending subscriptions and activate them
     const pendingSubscription = await (prisma as any).subscription.findFirst({
       where: {
-        shopId: shop.id,
+        shopId: shop?.id,
         status: "pending"
       },
       orderBy: { createdAt: "desc" }
@@ -33,7 +33,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     // If no active subscription in database, check Shopify for active subscriptions
     const activeSubscriptions = await (prisma as any).subscription.findMany({
       where: {
-        shopId: shop.id,
+        shopId: shop?.id,
         status: "active"
       }
     });
@@ -85,7 +85,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
           const newSubscription = await (prisma as any).subscription.create({
             data: {
-              shopId: shop.id,
+              shopId: shop?.id,
               plan,
               price,
               status: "active",
@@ -164,59 +164,114 @@ export default function Index() {
   const [showVideoModal, setShowVideoModal] = useState(false);
 
   
+  // useEffect(() => {
+  //   const fetchThemeData = async () => {
+  //     try {
+  //       const res = await fetch(`/app/theme-extension-data`);
+  //       const data = await res.json();
+
+  //       // embedEnabled in your loader is an array (or null). Normalize to a single item.
+  //       const embedItem = Array.isArray(data.embedEnabled)
+  //         ? data.embedEnabled[0]
+  //         : data.embedEnabled;
+  //       if (data.success) {
+  //         setThemes(data.themes || []);
+  //         if (embedItem && embedItem.type && typeof embedItem.settings === "object") {
+  //           const value = !embedItem.disabled
+
+  //           // if value is boolean -> set state, else null
+  //           if (typeof value === "boolean") {
+  //             setEmbededApp(value);
+  //           } else {
+  //             // If not boolean, treat as off (or unknown). Here we set false if falsy, null if undefined.
+  //             setEmbededApp(value === undefined ? null : Boolean(value));
+  //           }
+
+  //           // set extension/type metadata for open settings link
+  //           if (embedItem.type) {
+  //             setExtensionId(extractEmbededAppId(embedItem.type));
+  //             setEmbededAppName(extractBlockType(embedItem.type));
+  //           } else {
+  //             setExtensionId(null);
+  //             setEmbededAppName(null);
+  //           }
+  //         } else {
+  //           // No embed item/settings found -> treat as Off (false)
+  //           setEmbededApp(false);
+  //           setExtensionId(null);
+  //           setEmbededAppName(null);
+  //           console.warn("No embedEnabled settings found in response.");
+  //         }
+  //         if (data.themes?.length > 0) {
+  //           const main = data.themes.find((t: any) => t.role === "MAIN");
+  //           if (main) setThemeId(main.id.split("/").pop());
+  //         }
+  //       } else {
+  //         console.error(" Failed to fetch theme toggle data:", data);
+  //       }
+  //     } catch (error) {
+  //       console.error(" Error fetching theme toggle data:", error);
+  //     } finally {
+  //       setLoadingThemes(false);
+  //     }
+  //   };
+  //   fetchThemeData(); //  run the async function 
+  // }, []);
+
   useEffect(() => {
-    const fetchThemeData = async () => {
-      try {
-        const res = await fetch(`/app/theme-extension-data`);
-        const data = await res.json();
-
-        // embedEnabled in your loader is an array (or null). Normalize to a single item.
-        const embedItem = Array.isArray(data.embedEnabled)
-          ? data.embedEnabled[0]
-          : data.embedEnabled;
-        if (data.success) {
-          setThemes(data.themes || []);
-          if (embedItem && embedItem.type && typeof embedItem.settings === "object") {
-            const value = !embedItem.disabled
-
-            // if value is boolean -> set state, else null
-            if (typeof value === "boolean") {
-              setEmbededApp(value);
-            } else {
-              // If not boolean, treat as off (or unknown). Here we set false if falsy, null if undefined.
-              setEmbededApp(value === undefined ? null : Boolean(value));
-            }
-
-            // set extension/type metadata for open settings link
-            if (embedItem.type) {
-              setExtensionId(extractEmbededAppId(embedItem.type));
-              setEmbededAppName(extractBlockType(embedItem.type));
-            } else {
-              setExtensionId(null);
-              setEmbededAppName(null);
-            }
-          } else {
-            // No embed item/settings found -> treat as Off (false)
-            setEmbededApp(false);
-            setExtensionId(null);
-            setEmbededAppName(null);
-            console.warn("No embedEnabled settings found in response.");
-          }
-          if (data.themes?.length > 0) {
-            const main = data.themes.find((t: any) => t.role === "MAIN");
-            if (main) setThemeId(main.id.split("/").pop());
-          }
-        } else {
-          console.error(" Failed to fetch theme toggle data:", data);
-        }
-      } catch (error) {
-        console.error(" Error fetching theme toggle data:", error);
-      } finally {
-        setLoadingThemes(false);
-      }
-    };
-    fetchThemeData(); //  run the async function 
+    fetchThemeData();
   }, []);
+
+  const fetchThemeData = async () => {
+  try {
+    setLoadingThemes(true);
+
+    const res = await fetch(`/app/theme-extension-data`);
+    const data = await res.json();
+
+    const embedItem = Array.isArray(data.embedEnabled)
+      ? data.embedEnabled[0]
+      : data.embedEnabled;
+
+    if (data.success) {
+      setThemes(data.themes || []);
+
+      if (embedItem && embedItem.type && typeof embedItem.settings === "object") {
+        const value = !embedItem.disabled;
+
+        if (typeof value === "boolean") {
+          setEmbededApp(value);
+        } else {
+          setEmbededApp(value === undefined ? null : Boolean(value));
+        }
+
+        if (embedItem.type) {
+          setExtensionId(extractEmbededAppId(embedItem.type));
+          setEmbededAppName(extractBlockType(embedItem.type));
+        } else {
+          setExtensionId(null);
+          setEmbededAppName(null);
+        }
+      } else {
+        setEmbededApp(false);
+        setExtensionId(null);
+        setEmbededAppName(null);
+      }
+
+      if (data.themes?.length > 0) {
+        const main = data.themes.find((t: any) => t.role === "MAIN");
+        if (main) setThemeId(main.id.split("/").pop());
+      }
+    } else {
+      console.error("❌ Failed to fetch theme data:", data);
+    }
+  } catch (error) {
+    console.error("❌ Error fetching theme data:", error);
+  } finally {
+    setLoadingThemes(false);
+  }
+};
+
 
   const openEmbedSettings = () => {
     if (!themeId || !shop?.domain || !embededAppName || !extensionId || !embededAppName) {
@@ -243,9 +298,6 @@ export default function Index() {
   return (
     <>
       <s-page heading="Dashboard">
-        
-
-
 <s-section>
   {/* 
     Welcome Promo Bar
@@ -324,7 +376,29 @@ export default function Index() {
                 </div>
             </div>
 
-            <button
+
+<button onClick={openEmbedSettings}
+  style={{
+    backgroundColor: "#fff",
+    border: "1px solid #c7c7c7",
+    borderRadius: "6px",
+    padding: "8px 16px",
+    fontSize: "14px",
+    fontWeight: 500,
+    color: "#202223",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.backgroundColor = "#f3f4f6";
+    e.currentTarget.style.borderColor = "#a1a1a1";
+  }} onMouseLeave={(e) => {
+    e.currentTarget.style.backgroundColor = "#fff";
+    e.currentTarget.style.borderColor = "#c7c7c7";
+  }}>App embed settings</button>
+
+
+            {/* <button
                 onClick={openEmbedSettings}
                 style={{
                     backgroundColor: "#fff",
@@ -341,7 +415,7 @@ export default function Index() {
                 onMouseLeave={(e) => { e.target.style.backgroundColor = "#fff"; e.target.style.borderColor = "#c7c7c7"; }}
             >
                 App embed settings
-            </button>
+            </button> */}
         </div>
 
         {/* Two columns */}
@@ -381,8 +455,8 @@ export default function Index() {
                             border: "6px solid #e5e7eb",
                             transition: "border-color 0.2s ease",
                         }}
-                        onMouseEnter={(e) => e.target.style.borderColor = "#c7c7c7"}
-                        onMouseLeave={(e) => e.target.style.borderColor = "#e5e7eb"}
+                        onMouseEnter={(e) => e.currentTarget.style.borderColor = "#c7c7c7"}
+                        onMouseLeave={(e) => e.currentTarget.style.borderColor = "#e5e7eb"}
                     >
                         <div
                             style={{
@@ -462,11 +536,29 @@ export default function Index() {
                         transition: "background-color 0.2s ease",
                     }}
                     type="button"
-                    onMouseEnter={(e) => e.target.style.backgroundColor = embededApp ? "#f59e0b" : "#047857"}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = embededApp ? "#fbbf24" : "#059669"}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = embededApp ? "#f59e0b" : "#047857"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = embededApp ? "#fbbf24" : "#059669"}
                 >
                     ⚡ {embededApp ? 'Manage Settings' : 'Speed Up My Store'}
                 </button>
+                <button
+  type="button"
+  onClick={fetchThemeData}
+  disabled={loadingThemes}
+  style={{
+    marginLeft: 12,
+    backgroundColor: "#fff",
+    border: "1px solid #c7c7c7",
+    borderRadius: 6,
+    padding: "8px 14px",
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: loadingThemes ? "not-allowed" : "pointer",
+  }}
+>
+  🔄 {loadingThemes ? "Checking…" : "Refresh status"}
+</button>
+
             </div>
         </div>
 
@@ -526,7 +618,7 @@ export default function Index() {
                 </div>
 
                 <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-                    <button style={{ padding: "10px 16px", borderRadius: 6, border: "1px solid #c7c7c7", background: "#fff", color: "#202223", cursor: "pointer", fontSize: "14px", fontWeight: 500, transition: "all 0.2s ease" }} type="button" onClick={() => setShowVideoModal(true)} onMouseEnter={(e) => { e.target.style.backgroundColor = "#f3f4f6"; e.target.style.borderColor = "#a1a1a1"; }} onMouseLeave={(e) => { e.target.style.backgroundColor = "#fff"; e.target.style.borderColor = "#c7c7c7"; }}>Watch the video</button>
+                    <button style={{ padding: "10px 16px", borderRadius: 6, border: "1px solid #c7c7c7", background: "#fff", color: "#202223", cursor: "pointer", fontSize: "14px", fontWeight: 500, transition: "all 0.2s ease" }} type="button" onClick={() => setShowVideoModal(true)} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f3f4f6"; e.currentTarget.style.borderColor = "#a1a1a1"; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#fff"; e.currentTarget.style.borderColor = "#c7c7c7"; }}>Watch the video</button>
                 </div>
             </div>
 
@@ -741,8 +833,8 @@ export default function Index() {
                         borderRadius: "4px",
                         transition: "background-color 0.2s ease",
                     }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = "#f3f4f6"}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = "transparent"}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f3f4f6"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                 >
                     ✖
                 </button>

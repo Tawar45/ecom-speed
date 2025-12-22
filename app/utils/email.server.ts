@@ -5,13 +5,16 @@ import { getShopInfo } from "./graphql-query";
 import nodemailer from 'nodemailer';
 import { welcomeEmailTemplate } from "./welcome_template";
 import { weeklyEmailTemplate } from "./weekly_template";
+
 export interface WelcomeEmailData {
   shopDomain: string;
   plan: string;
   price: number;
   recivederEmail: string;
   planName: string;
+  datetime:string;
 }
+
 // ✅ Create a reusable SMTP transporter
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -69,7 +72,6 @@ export async function sendWelcomeEmailInstalledMaill(ShopInfo: any) {
   }
 }
 
-
 export async function sendWelcomeEmail(
   shopDomain: string,
   plan: string,
@@ -104,9 +106,12 @@ export async function sendWelcomeEmail(
     throw error;
   }
 }
+
 export async function sendWeekEmail(
   shopDomain: string,
-  recivederEmail: string
+  recivederEmail: string,
+  currentDateUTC:Date ,
+  afterOneWeekUTC:Date,
 ): Promise<void> {
 
   if (!process.env.SMTP_FROM_EMAIL) {
@@ -118,7 +123,7 @@ export async function sendWeekEmail(
     to: recivederEmail,  //'rohit45.tawar@gmail.com',
     from: process.env.SMTP_FROM_EMAIL,
     subject: `Weekly Report`,
-    html: weeklyEmailTemplate({ shopName: shopDomain, }),
+    html: weeklyEmailTemplate({ shopName: shopDomain, currentDateUTC,afterOneWeekUTC}),
   };
 
   try {
@@ -195,7 +200,6 @@ export async function sendExpirationEmail(
   }
 }
 
-
 export async function handleShopSession(
   prisma: PrismaClient,
   session: any,
@@ -203,6 +207,8 @@ export async function handleShopSession(
 ) {
   try {
     // -------------------------------
+    const info = await getShopInfo(admin);
+    const shopEmail = info?.email;
     // 1. Find existing shop (with last subscription)
     // -------------------------------
     let shop = await prisma.shop.findUnique({
@@ -214,21 +220,18 @@ export async function handleShopSession(
         },
       },
     });
-
-
     // -------------------------------
     // 2. If shop NOT found → create
     // -------------------------------
     if (!shop) {
-      shop = await prisma.shop.create({
+       shop = await prisma.shop.create({
         data: {
           domain: session.shop,
           accessToken: session.accessToken,
+          email: shopEmail,  
+          lastWeeklyEmailAt: new Date(), // ✅ INIT timestamp
         },
       });
-
-
-
       return shop;
     }
     // -------------------------------
@@ -247,6 +250,7 @@ export async function handleShopSession(
           where: { domain: session.shop },
           data: {
             welcomeEmailSent: true,
+             email: shopEmail,  
           },
         });
       } catch (err) {
@@ -260,6 +264,7 @@ export async function handleShopSession(
       where: { id: shop.id },
       data: {
         accessToken: session.accessToken,
+         email: shopEmail,       
       },
     });
 

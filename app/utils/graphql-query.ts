@@ -20,7 +20,7 @@ export async function getShopInfo(admin: any) {
   }
 
   return {
-    email: data.shop.email,
+    email: data.shop.contactEmail || data.shop.email,
     contactEmail: data.shop.contactEmail,
     domain: data.shop.myshopifyDomain,
     name: data.shop.name,
