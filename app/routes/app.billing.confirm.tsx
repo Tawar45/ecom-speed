@@ -11,7 +11,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const chargeId = url.searchParams.get('charge_id');
 
   if (!chargeId) {
-    console.log("❌ [BILLING CONFIRM] No charge_id found in URL");
     return { error: "Invalid billing confirmation request" };
   }
   try {
@@ -38,7 +37,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
       // Also try to extract from the confirmation URL itself
       if (!shopDomain) {
-        console.log(" [BILLING CONFIRM] No shop domain found in referer or confirmation URL");
         try {
           const confirmationUrl = url.searchParams.get('confirmation_url');
           if (confirmationUrl) {
@@ -207,9 +205,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     // Send welcome email
     try {
-      console.log("[BILLING CONFIRM] Sending welcome email to", session.shop);
       // await sendWelcomeEmail(session.shop, plan, price);
-      console.log("[BILLING CONFIRM] Welcome email sent successfully");
       // await sendWelcomeEmail(session.shop, plan, price);
     } catch (emailError) {
       console.error("[BILLING CONFIRM] Failed to send welcome email:", emailError);

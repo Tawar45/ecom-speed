@@ -13,7 +13,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const url = new URL(request.url);
   const chargeId = url.searchParams.get("charge_id");
-  console.log(chargeId, '--------------------chargeId in pricing loader');
   const combinedQuery = `
     query {
       shop {
@@ -78,9 +77,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         } catch (emailErr) {
           console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
         }
-      } else {
-        console.log(`[PRICING LOADER] Subscription found but status="${activeSubscription.status}" — skipping welcome email.`);
-      }
+      } 
     }
 
     return {
@@ -107,7 +104,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const APP_HANDLE = process.env.VITE_SHOPIFY_APP_HANDLE || 'ecom-page-speed-expert';
     // Build dynamic return URL
     let returnUrl = `https://admin.shopify.com/store/${storeName}/apps/${APP_HANDLE}/app/pricing`;
-    console.log("----> [PRICING ACTION] Return URL:", returnUrl);
     const formData = await request.formData();
     const plan = formData.get("plan") as string;
     const price = parseFloat(formData.get("price") as string);    // Validate form data
@@ -279,7 +275,7 @@ export default function PricingPage() {
     <s-page heading="Choose Your Plan">
       <s-section>
         <h2 style={{ fontSize: "28px", fontWeight: "600", marginBottom: "16px" }}>
-         Plans
+          Plans
         </h2>
         {/* Error Banner */}
         {actionData?.error && (
@@ -290,28 +286,32 @@ export default function PricingPage() {
 
         {/* Current Plan Banner with Cancel Button */}
         {activeSubscription && (
-          <s-banner status="info" style={{ border: '1px solid #b2dff8', background: '#eaf6ff', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: "1rem",
-              }}
-            >
-              <s-paragraph style={{ margin: 0, fontSize: '16px', color: '#03549a' }}>
-                <strong>Current Plan:</strong> {activeSubscription.name} (
-                ${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
-              </s-paragraph>
+          <div style={{ border: '1px solid #b2dff8', background: '#eaf6ff', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
+            <s-banner >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "1rem",
+                }}
+              >
+                <div style={{ margin: 0, fontSize: '16px', color: '#03549a' }}>
+                  <s-paragraph>
+                    <strong>Current Plan:</strong> {activeSubscription.name} (
+                    ${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
+                  </s-paragraph>
+                </div>
 
-              <fetcher.Form method="post" action="/app/billing/cancel" ref={formRef}>
-                <s-button type="submit" variant="primary" tone="critical" loading={isSubmitting} disabled={isSubmitting} onClick={handleCancelClick}>
-                  Cancel Subscription
-                </s-button>
-              </fetcher.Form>
-            </div>
-          </s-banner>
+                <fetcher.Form method="post" action="/app/billing/cancel" ref={formRef}>
+                  <s-button type="submit" variant="primary" tone="critical" loading={isSubmitting} disabled={isSubmitting} onClick={handleCancelClick}>
+                    Cancel Subscription
+                  </s-button>
+                </fetcher.Form>
+              </div>
+            </s-banner>
+          </div>
         )}
 
         {/* Confirmation Popup */}
@@ -462,11 +462,9 @@ export default function PricingPage() {
                   <input type="hidden" name="price" value={plan.price} />
                   <s-button
                     type="submit"
-                    variant={isActive ? "monochrome" : (isFree ? "secondary" : "primary")}
+                    variant={isActive ? "auto" : (isFree ? "secondary" : "primary")}
                     loading={isSubmittingThisPlan}
                     disabled={isSubmittingThisPlan || isActive}
-                    fullWidth
-                    size="large"
                   >
                     {isActive ? "Current Plan" : (isFree ? "Get Started" : `Subscribe to ${plan.plan}`)}
                   </s-button>
@@ -542,165 +540,5 @@ export default function PricingPage() {
     `}</style>
       </s-section>
     </s-page>
-
-    //   <s-page heading="Choose Your Plan">
-    //   <s-section heading="Plans">
-    //     {/* Error Banner */}
-    //     {actionData?.error && (
-    //       <s-banner tone="critical">
-    //         <s-paragraph>Error: {actionData.error}</s-paragraph>
-    //       </s-banner>
-    //     )}
-
-    //     {/* Current Plan Banner with Cancel Button (side by side) */}
-    //     {activeSubscription && (
-    //       <s-banner >
-    //         <div
-    //           style={{
-    //             display: "flex",
-    //             justifyContent: "space-between",
-    //             alignItems: "center",
-    //             flexWrap: "wrap",
-    //             gap: "0.5rem",
-    //             background: "none"
-
-    //           }}
-    //         >
-    //           <s-paragraph>
-    //             <div style={{background:"none"}}>
-    //             <strong>Current Planaaa:</strong> {activeSubscription.name} (
-    //             ${activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount}/month)
-    //             </div>
-    //           </s-paragraph>
-
-    //           <fetcher.Form method="post" action="/app/billing/cancel" ref={formRef}>
-    //             <s-button type="button" variant="primary" tone="critical" loading={isSubmitting} disabled={isSubmitting}
-    //               onClick={handleCancelClick}>
-    //               Yes, Cancel Subscription
-    //             </s-button>
-    //         </fetcher.Form>
-
-    //     {/* Confirmation Popup */}
-    //     {showConfirm && (
-    //       <div
-    //         style={{
-    //           position: "fixed",
-    //           inset: 0,
-    //           background: "rgba(0,0,0,0.5)",
-    //           display: "flex",
-    //           justifyContent: "center",
-    //           alignItems: "center",
-    //           zIndex: 1000,
-    //         }}
-    //       >
-    //         <div
-    //           style={{
-    //             background: "#fff",
-    //             borderRadius: "8px",
-    //             padding: "20px",
-    //             width: "400px",
-    //             boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
-    //           }}
-    //         >
-    //           <h3>Confirm Cancellation</h3>
-    //           <p>Are you sure you want to cancel your subscription?</p>
-
-    //           <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
-    //             <button onClick={handleClosePopup} style={{cursor: "pointer"}}>No, Go Back</button>
-    //             <button
-    //               onClick={handleConfirmCancel}
-    //               style={{
-    //                 background: "#c53030",
-    //                 color: "white",
-    //                 border: "none",
-    //                 padding: "8px 12px",
-    //                 borderRadius: "4px",
-    //                 cursor: "pointer"
-    //               }}
-    //             >
-    //               {isSubmitting ? "Cancelling..." : "Yes, Cancel"}
-    //             </button>
-    //           </div>
-    //         </div>
-    //       </div>
-    //     )}
-    //         </div>
-    //       </s-banner>
-    //     )}
-    //     {/* Pricing Plan Cards */}
-    //     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",gap: "0.5rem",marginTop: "1rem",}}>
-    //       {plans.map((plan) => {
-    //         const isActive = isActivePlan(plan.plan);
-    //         const isSubmittingThisPlan = navigation.state === "submitting" && loadingPlan === plan.plan;
-    //         return (
-    //           <div key={plan.plan} className="box_styles" style={{ position: "relative",backgroundColor: "#fff",
-    //               border: isActive? "2px solid #ddd": "1px solid #ddd",
-    //               borderRadius: "8px",
-    //               boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-    //               padding: "20px",
-    //               width:"250px",
-    //               height:"auto",
-    //             }}
-    //           >
-    //             <s-section>
-    //               <div style={{ textAlign: "center" }}>
-    //                 <h2 style={{ fontSize: "1rem", fontWeight: "600",color: "#333",letterSpacing: "0.5px",}}>
-    //                   {plan.name} 
-    //                 </h2>
-    //               </div>
-
-    //               {/* Price */}
-    //               {/* <s-paragraph>
-    //                 <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-    //                   <strong style={{ fontSize: "2rem", fontWeight: "700",}}>
-    //                     ${plan.price}
-    //                   </strong>
-    //                   <span style={{fontSize: "0.9rem",color: "#666",marginLeft: "2px",}}>
-    //                     /mo
-    //                   </span>
-    //                 </div>
-    //               </s-paragraph> */}
-    //               {/* Subscribe Button */}
-    //               <div style={{ textAlign: "center", marginBottom: "1.2rem" }}>
-    //                 <Form method="post" onSubmit={() => setLoadingPlan(plan.plan)} >
-    //                   <input type="hidden" name="plan" value={plan.plan} />
-    //                   <input type="hidden" name="price" value={plan.price} />
-    //                   <s-button
-    //                   type="submit"
-    //                   variant={isActive ? "secondary" : "primary"}
-    //                   loading={isSubmittingThisPlan}
-    //                   disabled={isSubmittingThisPlan || isActive}>
-    //                   {isActive ? "Current Plan" : `Subscribe to ${plan.plan}`}
-    //                 </s-button>
-    //                 </Form>
-    //               </div>
-    //               <s-unordered-list >
-    //                 {plan.features.map((feature, index) => (
-    //                   <s-list-item key={index} >
-    //                     <div 
-    //                       style={{
-    //                         backgroundColor:"#F5F5F5",
-    //                         borderRadius: "8px",
-    //                         marginTop: "0.4rem",
-    //                         textAlign: "left",
-    //                         padding:"4px 7px",
-    //                         fontSize: "12px",
-    //                       }}
-    //                     >
-    //                       {feature}
-    //                     </div>
-    //                   </s-list-item>
-    //                 ))}
-    //               </s-unordered-list>  
-    //             </s-section>
-    //           </div>
-    //         );
-    //       })}
-    //     </div>
-    //   </s-section>
-    // </s-page>
-
-
-
   );
 }

@@ -4,7 +4,6 @@ import { sendCancellationEmail } from "../utils/email.server";
 import type { ActionFunctionArgs } from "react-router";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  console.log(" ----> [BILLING CANCEL API] Starting cancellation process...");
   const { admin, session } = await authenticate.admin(request);
   try {
     // Step 1: Get active subscriptions from Shopify
@@ -27,7 +26,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     `;
     const response = await admin.graphql(query);
     const data = await response.json();
-    console.log(" ----> [BILLING CANCEL API query] GraphQL response:", data);
     let username = data?.data?.shop.name;
     let recipientEmail = data?.data?.shop.email;
     const activeSubscriptions = data?.data?.currentAppInstallation?.activeSubscriptions || [];
@@ -50,7 +48,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     `;
     const cancelResponse = await admin.graphql(mutation, { variables: { id: subscriptionId } });
     const cancelData = await cancelResponse.json();
-    console.log(" ----> [BILLING CANCEL API mutation] GraphQL response:", cancelData);
 
     const userErrors = cancelData?.data?.appSubscriptionCancel?.userErrors || [];
     if (userErrors.length > 0) {

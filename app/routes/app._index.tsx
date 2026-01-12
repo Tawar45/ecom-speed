@@ -14,6 +14,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     // this function will create or update the shop record as needed and send welcome email
     let shop = await handleShopSession(prisma, session, admin);
 
+    if(!shop || !shop.id){
+
+      console.warn('nor found shop')
+      return 
+
+    }
     // Check for pending subscriptions and activate them
     const pendingSubscription = await (prisma as any).subscription.findFirst({
       where: {
@@ -110,12 +116,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
     });
 
-  
-
     const result = {
       shop: shop ? {
         domain: shop.domain,
-        subscription: shop.subscriptions[0] || null
+        subscription: (shop as any)?.subscriptions[0] || null
       } : null
     };
 
@@ -148,21 +152,21 @@ function getFirstKey(obj: any) {
 }
 
 export default function Index() {
-  const { shop } = useLoaderData<typeof loader>();
+  const data  = useLoaderData<typeof loader>();
+  if(!data?.shop) return
+  const shop = data.shop
   const [themeId, setThemeId] = useState<string | null>(null);
   const [embededApp, setEmbededApp] = useState<any>();
   const [extensionId, setExtensionId] = useState<any>();
   const [embededAppName, setEmbededAppName] = useState<string | null>();
   const [themes, setThemes] = useState<any[]>([]);
   const [loadingThemes, setLoadingThemes] = useState(true);
- 
+  const [themeError, setThemeError] = useState<string | null>(null);
   const logoUrl = "../../logo.png";
-  
   const [isLoading, setIsLoading] = useState(false);
   const timerRef = useRef<number | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
-
   
   useEffect(() => {
     const fetchThemeData = async () => {
@@ -211,6 +215,7 @@ export default function Index() {
         }
       } catch (error) {
         console.error(" Error fetching theme toggle data:", error);
+        setThemeError("Failed to load theme settings. Please refresh the page.");
       } finally {
         setLoadingThemes(false);
       }
@@ -221,7 +226,7 @@ export default function Index() {
   const openEmbedSettings = () => {
     if (!themeId || !shop?.domain || !embededAppName || !extensionId || !embededAppName) {
       {
-        console.error("⚠️ Missing data to open embed settings:", { themeId, shopDomain: shop?.domain, embededAppName, extensionId });
+        console.error("Missing data to open embed settings:", { themeId, shopDomain: shop?.domain, embededAppName, extensionId });
         // return;
       };
     }
@@ -287,6 +292,24 @@ export default function Index() {
 
 <s-section>
     <div style={{ display: "block", gap: 16, fontFamily: "Inter, system-ui, sans-serif", backgroundColor: "#f9fafb", padding: "16px" }}>
+        {/* Error message */}
+        {themeError && (
+            <div
+                style={{
+                    backgroundColor: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    borderRadius: "8px",
+                    padding: "12px",
+                    marginBottom: "16px",
+                    color: "#dc2626",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                }}
+            >
+                {themeError}
+            </div>
+        )}
+
         {/* Extension setting */}
         <div
             style={{
@@ -337,8 +360,8 @@ export default function Index() {
                     cursor: "pointer",
                     transition: "all 0.2s ease",
                 }}
-                onMouseEnter={(e) => { e.target.style.backgroundColor = "#f3f4f6"; e.target.style.borderColor = "#a1a1a1"; }}
-                onMouseLeave={(e) => { e.target.style.backgroundColor = "#fff"; e.target.style.borderColor = "#c7c7c7"; }}
+                onMouseEnter={(e) => { (e.target as HTMLElement).style.backgroundColor = "#f3f4f6"; (e.target as HTMLElement).style.borderColor = "#a1a1a1"; }}
+                onMouseLeave={(e) => { (e.target as HTMLElement).style.backgroundColor = "#fff"; (e.target as HTMLElement).style.borderColor = "#c7c7c7"; }}
             >
                 App embed settings
             </button>
@@ -381,8 +404,8 @@ export default function Index() {
                             border: "6px solid #e5e7eb",
                             transition: "border-color 0.2s ease",
                         }}
-                        onMouseEnter={(e) => e.target.style.borderColor = "#c7c7c7"}
-                        onMouseLeave={(e) => e.target.style.borderColor = "#e5e7eb"}
+                        onMouseEnter={(e) => (e.target as HTMLElement).style.borderColor = "#c7c7c7"}
+                        onMouseLeave={(e) => (e.target as HTMLElement).style.borderColor = "#e5e7eb"}
                     >
                         <div
                             style={{
@@ -462,8 +485,8 @@ export default function Index() {
                         transition: "background-color 0.2s ease",
                     }}
                     type="button"
-                    onMouseEnter={(e) => e.target.style.backgroundColor = embededApp ? "#f59e0b" : "#047857"}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = embededApp ? "#fbbf24" : "#059669"}
+                    onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = embededApp ? "#f59e0b" : "#047857"}
+                    onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = embededApp ? "#fbbf24" : "#059669"}
                 >
                     ⚡ {embededApp ? 'Manage Settings' : 'Speed Up My Store'}
                 </button>
@@ -526,7 +549,7 @@ export default function Index() {
                 </div>
 
                 <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-                    <button style={{ padding: "10px 16px", borderRadius: 6, border: "1px solid #c7c7c7", background: "#fff", color: "#202223", cursor: "pointer", fontSize: "14px", fontWeight: 500, transition: "all 0.2s ease" }} type="button" onClick={() => setShowVideoModal(true)} onMouseEnter={(e) => { e.target.style.backgroundColor = "#f3f4f6"; e.target.style.borderColor = "#a1a1a1"; }} onMouseLeave={(e) => { e.target.style.backgroundColor = "#fff"; e.target.style.borderColor = "#c7c7c7"; }}>Watch the video</button>
+                    <button style={{ padding: "10px 16px", borderRadius: 6, border: "1px solid #c7c7c7", background: "#fff", color: "#202223", cursor: "pointer", fontSize: "14px", fontWeight: 500, transition: "all 0.2s ease" }} type="button" onClick={() => setShowVideoModal(true)} onMouseEnter={(e) => { (e.target as HTMLElement).style.backgroundColor = "#f3f4f6"; (e.target as HTMLElement).style.borderColor = "#a1a1a1"; }} onMouseLeave={(e) => { (e.target as HTMLElement).style.backgroundColor = "#fff"; (e.target as HTMLElement).style.borderColor = "#c7c7c7"; }}>Watch the video</button>
                 </div>
             </div>
 
@@ -741,8 +764,8 @@ export default function Index() {
                         borderRadius: "4px",
                         transition: "background-color 0.2s ease",
                     }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = "#f3f4f6"}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = "transparent"}
+                    onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = "#f3f4f6"}
+                    onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = "transparent"}
                 >
                     ✖
                 </button>

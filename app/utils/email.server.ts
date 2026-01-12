@@ -11,7 +11,6 @@ export interface WelcomeEmailData {
   recivederEmail: string;
   planName: string;
 }
-// ✅ Create a reusable SMTP transporter
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: Number(process.env.SMTP_PORT) || 587,
@@ -25,9 +24,7 @@ const transporter = nodemailer.createTransport({
 // Verify SMTP configuration
 transporter.verify((error, success) => {
   if (error) {
-    console.error('❌ [EMAIL] SMTP connection failed:', error);
-  } else {
-    console.log('✅ [EMAIL] SMTP server is ready to send emails');
+    console.error('[EMAIL] SMTP connection failed:', error);
   }
 });
 
@@ -77,7 +74,7 @@ export async function sendWelcomeEmail(
 ): Promise<void> {
 
   if (!process.env.SMTP_FROM_EMAIL) {
-    console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping email');
+    console.warn('[EMAIL] SMTP_FROM_EMAIL not configured, skipping email');
     return;
   }
 
@@ -95,11 +92,9 @@ export async function sendWelcomeEmail(
   };
 
   try {
-    console.log('📤 [EMAIL] Sending welcome email via SMTP...');
     await transporter.sendMail(msg);
-    console.log(`✅ [EMAIL] Welcome email sent successfully to ${shopDomain}`);
   } catch (error) {
-    console.error('❌ [EMAIL] Error sending welcome email:', error);
+    console.error('[EMAIL] Error sending welcome email:', error);
     throw error;
   }
 }
@@ -111,7 +106,7 @@ export async function sendCancellationEmail(
   recipientEmail: string
 ): Promise<void> {
   if (!process.env.SMTP_FROM_EMAIL) {
-    console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping cancellation email');
+    console.warn('[EMAIL] SMTP_FROM_EMAIL not configured, skipping cancellation email');
     return;
   }
   const planNames = { basic: 'Basic', pro: 'Pro', business: 'Business' };
@@ -125,9 +120,8 @@ export async function sendCancellationEmail(
   };
   try {
     await transporter.sendMail(msg);
-    console.log(`✅ [EMAIL] Cancellation email sent successfully to ${shopDomain}`);
   } catch (error) {
-    console.error('❌ [EMAIL] Error sending cancellation email:', error);
+    console.error('[EMAIL] Error sending cancellation email:', error);
   }
 }
 
@@ -136,16 +130,14 @@ export async function sendExpirationEmail(
   plan: string,
   recepientEmail: string
 ): Promise<void> {
-  console.log('📧 [EMAIL] Starting expiration email process...');
 
   if (!process.env.SMTP_FROM_EMAIL) {
-    console.warn('⚠️ [EMAIL] SMTP_FROM_EMAIL not configured, skipping expiration email');
+    console.warn('[EMAIL] SMTP_FROM_EMAIL not configured, skipping expiration email');
     return;
   }
 
   const planNames = { basic: 'Basic', pro: 'Pro', business: 'Business' };
   const planName = planNames[plan as keyof typeof planNames] || plan;
-
   const msg = {
     to: recepientEmail,
     from: process.env.SMTP_FROM_EMAIL,
@@ -160,14 +152,11 @@ export async function sendExpirationEmail(
   };
 
   try {
-    console.log('📤 [EMAIL] Sending expiration email via SMTP...');
     await transporter.sendMail(msg);
-    console.log(`✅ [EMAIL] Expiration email sent successfully to ${shopDomain}`);
   } catch (error) {
-    console.error('❌ [EMAIL] Error sending expiration email:', error);
+    console.error('[EMAIL] Error sending expiration email:', error);
   }
 }
-
 
 export async function handleShopSession(
   prisma: PrismaClient,
@@ -178,7 +167,7 @@ export async function handleShopSession(
     // -------------------------------
     // 1. Find existing shop (with last subscription)
     // -------------------------------
-    let shop = await prisma.shop.findUnique({
+    const shop = await prisma.shop.findUnique({
       where: { domain: session.shop },
       include: {
         subscriptions: {
@@ -187,21 +176,16 @@ export async function handleShopSession(
         },
       },
     });
-
-
     // -------------------------------
     // 2. If shop NOT found → create
     // -------------------------------
     if (!shop) {
-      shop = await prisma.shop.create({
+      const shop =  await prisma.shop.create({
         data: {
           domain: session.shop,
           accessToken: session.accessToken,
         },
       });
-
-
-
       return shop;
     }
     // -------------------------------
@@ -210,7 +194,6 @@ export async function handleShopSession(
     if (!shop.welcomeEmailSent) {
       try {
         const info = await getShopInfo(admin);
-
         const res = await sendWelcomeEmailInstalledMaill(info);
         if (!res) {
           console.error("[DASHBOARD] Failed to send welcome email: No response from email function");
@@ -235,7 +218,6 @@ export async function handleShopSession(
         accessToken: session.accessToken,
       },
     });
-
     return shop;
   } catch (error) {
     console.error("[SHOP UTILS] Error in handleShopSession:", error);
