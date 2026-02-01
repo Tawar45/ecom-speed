@@ -4,7 +4,6 @@ import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { sendWelcomeEmailInstalledMaill } from "../utils/email.server";
 import { useEffect, useState ,useRef  } from "react";
-import { d } from "node_modules/@react-router/dev/dist/routes-CZR-bKRt";
 import { handleShopSession } from "../utils/email.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
 
@@ -14,11 +13,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     // this function will create or update the shop record as needed and send welcome email
     let shop = await handleShopSession(prisma, session, admin);
 
-    if(!shop || !shop.id){
-
-      console.warn('nor found shop')
-      return 
-
+    if (!shop || !shop.id) {
+      console.warn("[DASHBOARD] Shop not found after handleShopSession");
+      return { shop: null };
     }
     // Check for pending subscriptions and activate them
     const pendingSubscription = await (prisma as any).subscription.findFirst({
@@ -152,9 +149,50 @@ function getFirstKey(obj: any) {
 }
 
 export default function Index() {
-  const data  = useLoaderData<typeof loader>();
-  if(!data?.shop) return
-  const shop = data.shop
+  const data = useLoaderData<typeof loader>();
+  const shop = data?.shop ?? null;
+
+  // Show a proper error/empty state instead of blank page (fixes review: stuck loading, 2.1.1)
+  if (!shop) {
+    return (
+      <s-page heading="Dashboard">
+        <s-section>
+          <div
+            style={{
+              padding: "24px",
+              textAlign: "center",
+              backgroundColor: "#f9fafb",
+              borderRadius: "8px",
+              border: "1px solid #e5e7eb",
+            }}
+          >
+            <p style={{ fontSize: "16px", color: "#374151", marginBottom: "12px" }}>
+              Unable to load your dashboard. This can happen if the session expired or data is still syncing.
+            </p>
+            <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "16px" }}>
+              Please refresh the page or reopen the app from your Shopify admin.
+            </p>
+            <button
+              type="button"
+              onClick={() => typeof window !== "undefined" && window.location.reload()}
+              style={{
+                padding: "10px 20px",
+                backgroundColor: "#059669",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: "14px",
+              }}
+            >
+              Reload app
+            </button>
+          </div>
+        </s-section>
+      </s-page>
+    );
+  }
   const [themeId, setThemeId] = useState<string | null>(null);
   const [embededApp, setEmbededApp] = useState<any>();
   const [extensionId, setExtensionId] = useState<any>();

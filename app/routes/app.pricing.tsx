@@ -89,10 +89,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   } catch (error) {
     console.error("Error fetching active subscriptions:", error);
     return {
-      admin,
       shopifyApiKey: process.env.SHOPIFY_API_KEY,
       activeSubscription: null,
-      shop: session.shop,
+      shop: null,
     };
   }
 };
@@ -233,7 +232,7 @@ export default function PricingPage() {
 
   useEffect(() => {
     const storeName = loaderData.shop?.replace('.myshopify.com', '');
-    if (actionData?.confirmationUrl && loaderData.shopifyApiKey) {
+    if (actionData?.confirmationUrl && loaderData.shopifyApiKey && loaderData.shop) {
       // Get host from URL search params
       let host = btoa('admin.shopify.com/store/' + storeName);
       if (!host) {

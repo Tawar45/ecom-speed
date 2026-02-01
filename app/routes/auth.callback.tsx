@@ -9,14 +9,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session, admin, redirect } = await authenticate.admin(request);
 
   if (!session || !session?.accessToken) {
-    console.warn('session error');
-    return;
-
+    console.warn("[auth.callback] Session error");
+    return new Response(null, {
+      status: 302,
+      headers: { Location: `/auth/login?shop=${new URL(request.url).searchParams.get("shop") || ""}` },
+    });
   }
 
-  if (admin) {
-    console.warn('admin not found')
-    return;
+  if (!admin) {
+    console.warn("[auth.callback] Admin not found");
+    const host = new URL(request.url).searchParams.get("host");
+    const location = host ? `/app?shop=${session.shop}&host=${host}` : `/app?shop=${session.shop}`;
+    return new Response(null, { status: 302, headers: { Location: location } });
   }
   //  IMPORTANT: Shopify might require a redirect (OAuth handshake)
   if (redirect) return redirect;
