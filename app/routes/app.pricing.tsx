@@ -2,17 +2,18 @@ import { Form, useActionData, useLoaderData, useLocation, useNavigation, useNavi
 // app/routes/app.pricing.tsx
 import { plans } from "../data/plans";
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
 import createApp from '@shopify/app-bridge';
 import { Redirect } from '@shopify/app-bridge/actions';
 import { useEffect, useState, useRef } from 'react';
 import { useFetcher } from "react-router";
-import { sendWelcomeEmail } from "../utils/email.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const url = new URL(request.url);
   const chargeId = url.searchParams.get("charge_id");
+  const host = url.searchParams.get("host");
   const combinedQuery = `
     query {
       shop {
@@ -78,10 +79,65 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
         }
       } 
+
+      // Keep local DB subscription in sync from a fully authenticated server request.
+      try {
+        const plan = (activeSubscription.name ?? "")
+          .toString()
+          .toLowerCase()
+          .replace(" plan", "")
+          .trim();
+        const price = Number(
+          activeSubscription.lineItems?.[0]?.plan?.pricingDetails?.price?.amount ?? 0
+        );
+        const recipientEmail = data?.data?.shop?.email ?? null;
+
+        let shop = await (prisma as any).shop.findUnique({
+          where: { domain: session.shop },
+        });
+
+        if (!shop) {
+          shop = await (prisma as any).shop.create({
+            data: {
+              domain: session.shop,
+              accessToken: session.accessToken,
+            },
+          });
+        } else {
+          await (prisma as any).shop.update({
+            where: { id: shop.id },
+            data: { accessToken: session.accessToken },
+          });
+        }
+
+        const existingActive = await (prisma as any).subscription.findFirst({
+          where: { shopId: shop.id, status: "active" },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (existingActive) {
+          await (prisma as any).subscription.update({
+            where: { id: existingActive.id },
+            data: { plan, price, status: "active", email: recipientEmail },
+          });
+        } else {
+          await (prisma as any).subscription.create({
+            data: {
+              shopId: shop.id,
+              plan,
+              price,
+              status: "active",
+              email: recipientEmail,
+            },
+          });
+        }
+      } catch (dbSyncError) {
+        console.error("[PRICING LOADER] Failed to sync subscription in DB:", dbSyncError);
+      }
     }
 
     return {
-      admin,
+      host,
       shopifyApiKey: process.env.SHOPIFY_API_KEY,
       activeSubscription: activeSubscriptions.length > 0 ? activeSubscriptions[0] : null,
       shop: session.shop,
@@ -89,6 +145,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   } catch (error) {
     console.error("Error fetching active subscriptions:", error);
     return {
+      host,
       shopifyApiKey: process.env.SHOPIFY_API_KEY,
       activeSubscription: null,
       shop: null,
@@ -100,20 +157,34 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     const { admin, session } = await authenticate.admin(request);
     const storeName = session.shop.replace('.myshopify.com', '');
-    const APP_HANDLE = process.env.VITE_SHOPIFY_APP_HANDLE || 'ecom-page-speed-expert';
+    const APP_HANDLE =
+      process.env.VITE_SHOPIFY_APP_HANDLE ||
+      process.env.SHOPIFY_APP_HANDLE ||
+      "ecom-speed-experts-2";
     // Build dynamic return URL
     let returnUrl = `https://admin.shopify.com/store/${storeName}/apps/${APP_HANDLE}/app/pricing`;
     const formData = await request.formData();
-    const plan = formData.get("plan") as string;
-    const price = parseFloat(formData.get("price") as string);    // Validate form data
-    if (!plan || !price || isNaN(price)) {
-      console.error("----> [PRICING ACTION] Invalid form data:", { plan, price });
+    const rawPlan = (formData.get("plan") as string | null)?.trim();
+    const rawPrice = formData.get("price") as string | null;
+    const price = rawPrice === null ? NaN : parseFloat(rawPrice);
+    if (!rawPlan || Number.isNaN(price) || price < 0) {
+      console.error("----> [PRICING ACTION] Invalid form data:", { plan: rawPlan, price });
       return { error: "Invalid plan or price data" };
+    }
+    const planId = rawPlan.toLowerCase();
+    const planNames: Record<string, string> = {
+      basic: "Basic Plan",
+      expert: "Expert Plan",
+      yearly: "Yearly Plan",
+    };
+
+    if (price === 0) {
+      return { success: true, message: "Free plan is active. No billing required." };
     }
     // Create app subscription using Shopify GraphQL (2025 compliant) //test: true
     const mutation = `
       mutation appSubscriptionCreate($name: String!, $lineItems: [AppSubscriptionLineItemInput!]!, $returnUrl: URL!) {
-        appSubscriptionCreate(name: $name, lineItems: $lineItems, returnUrl: $returnUrl) {
+        appSubscriptionCreate(name: $name, lineItems: $lineItems, returnUrl: $returnUrl,test: true) {
           appSubscription {
             id
             status
@@ -129,7 +200,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     `;
 
     const variables = {
-      name: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
+      name: planNames[planId] ?? `${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan`,
       lineItems: [
         {
           plan: {
@@ -190,7 +261,12 @@ export default function PricingPage() {
     const chargeId = params.get("charge_id");
     if (chargeId) {
       fetch(`/app/billing/confirm?charge_id=${chargeId}`)
-        .then((res) => res.json())
+        .then(async (res) => {
+          if (!res.ok) {
+            throw new Error(`Billing confirm failed with status ${res.status}`);
+          }
+          return res.json();
+        })
         .then((data) => {
           if (data.success) {
             const newUrl = location.pathname;
@@ -204,8 +280,7 @@ export default function PricingPage() {
     }
   }, [location.search]);
 
-  const handleCancelClick = (event: any) => {
-    event.preventDefault(); // Prevent form auto-submit
+  const handleCancelClick = () => {
     setShowConfirm(true);
   };
   // Confirm cancellation and submit
@@ -213,6 +288,7 @@ export default function PricingPage() {
     setShowConfirm(false);
     if (formRef.current) {
       const formData = new FormData(formRef.current);
+      formData.set("confirmCancel", "true");
       fetcher.submit(formData, {
         method: "post",
         action: "/app/billing/cancel",
@@ -231,22 +307,27 @@ export default function PricingPage() {
   const loaderData = useLoaderData<typeof loader>();
 
   useEffect(() => {
-    const storeName = loaderData.shop?.replace('.myshopify.com', '');
     if (actionData?.confirmationUrl && loaderData.shopifyApiKey && loaderData.shop) {
-      // Get host from URL search params
-      let host = btoa('admin.shopify.com/store/' + storeName);
-      if (!host) {
-        console.error("No host parameter found in URL");
+      if (loaderData.host) {
+        const app = createApp({
+          apiKey: loaderData.shopifyApiKey,
+          host: loaderData.host,
+        });
+        const redirect = Redirect.create(app);
+        redirect.dispatch(Redirect.Action.REMOTE, actionData.confirmationUrl);
         return;
       }
-      const app = createApp({
-        apiKey: loaderData.shopifyApiKey,
-        host,
-      });
-      const redirect = Redirect.create(app);
-      redirect.dispatch(Redirect.Action.REMOTE, actionData.confirmationUrl);
+
+      // Fallback for rare cases where host is missing after navigation.
+      if (typeof window !== "undefined") {
+        if (window.top) {
+          window.top.location.href = actionData.confirmationUrl;
+        } else {
+          window.location.href = actionData.confirmationUrl;
+        }
+      }
     }
-  }, [actionData?.confirmationUrl, loaderData.shopifyApiKey, location.search]);
+  }, [actionData?.confirmationUrl, loaderData.shopifyApiKey, loaderData.shop, loaderData.host]);
   // Extract current active plan
 
   const activeSubscription = loaderData.activeSubscription;
@@ -304,7 +385,7 @@ export default function PricingPage() {
                 </div>
 
                 <fetcher.Form method="post" action="/app/billing/cancel" ref={formRef}>
-                  <s-button type="submit" variant="primary" tone="critical" loading={isSubmitting} disabled={isSubmitting} onClick={handleCancelClick}>
+                  <s-button type="button" variant="primary" tone="critical" loading={isSubmitting} disabled={isSubmitting} onClick={handleCancelClick}>
                     Cancel Subscription
                   </s-button>
                 </fetcher.Form>
@@ -465,7 +546,7 @@ export default function PricingPage() {
                     loading={isSubmittingThisPlan}
                     disabled={isSubmittingThisPlan || isActive}
                   >
-                    {isActive ? "Current Plan" : (isFree ? "Get Started" : `Subscribe to ${plan.plan}`)}
+                    {isActive ? "Current Plan" : (isFree ? "Get Started" : `Subscribe to ${plan.name}`)}
                   </s-button>
                 </Form>
 
@@ -531,9 +612,6 @@ export default function PricingPage() {
         }
         h2 {
           font-size: 1.25rem !important;
-        }
-        div[style*="font-size: 2.5rem"] {
-          font-size: 2rem !important;
         }
       }
     `}</style>

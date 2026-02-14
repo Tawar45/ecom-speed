@@ -6,6 +6,18 @@ import type { ActionFunctionArgs } from "react-router";
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   try {
+    const formData = await request.formData();
+    const isConfirmed = formData.get("confirmCancel") === "true";
+    if (!isConfirmed) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Cancellation not confirmed" }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Step 1: Get active subscriptions from Shopify
     const query = `
       query {
@@ -30,8 +42,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     let recipientEmail = data?.data?.shop.email;
     const activeSubscriptions = data?.data?.currentAppInstallation?.activeSubscriptions || [];
     if (activeSubscriptions.length === 0) {
-      return new Response(JSON.stringify({ error: "No active subscription found" }), {
-        status: 404,
+      const shop = await (prisma as any).shop.findUnique({
+        where: { domain: session.shop },
+      });
+      if (shop) {
+        await (prisma as any).subscription.updateMany({
+          where: { shopId: shop.id, status: "active" },
+          data: { status: "cancelled", updatedAt: new Date() },
+        });
+      }
+      return new Response(JSON.stringify({ success: true, message: "No active subscription to cancel" }), {
+        status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -51,8 +72,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     const userErrors = cancelData?.data?.appSubscriptionCancel?.userErrors || [];
     if (userErrors.length > 0) {
-      return new Response(JSON.stringify({ error: userErrors[0].message }), {
-        status: 400,
+      return new Response(JSON.stringify({ success: false, error: userErrors[0].message }), {
+        status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -90,8 +111,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
   } catch (error) {
     console.error("Subscription cancellation error:", error);
-    return new Response(JSON.stringify({ error: "Failed to cancel subscription" }), {
-      status: 500,
+    return new Response(JSON.stringify({ success: false, error: "Failed to cancel subscription. Please try again." }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
     });
   }

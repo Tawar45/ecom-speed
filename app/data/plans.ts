@@ -7,7 +7,7 @@ export interface Plan {
     features: string[];
   }
   
-  export const plans: Plan[] = [
+export const plans: Plan[] = [
     {
       name: "Free Forever Plan",
       price: 0,
@@ -26,9 +26,9 @@ export interface Plan {
 
     },
     {
-      name: "Expert Plan ",
+      name: "Expert Plan",
       price: 9,
-      plan: "Expert Plan",
+      plan: "expert",
       features: [
       "All Features of the Free plan",
       "Speed Optimization on all pages across the store",
@@ -41,7 +41,7 @@ export interface Plan {
     {
       name: "Expert Yearly Plan",
       price: 79,
-      plan: "Yearly Plan",
+      plan: "yearly",
       features: [
         "Get approximately 27% off by choosing annual billing"
       ],

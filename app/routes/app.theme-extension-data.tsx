@@ -10,7 +10,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
 
   // support both possible env var spellings; fallback to a default handle
-  const app_handle =  import.meta.env.VITE_EMBEDED_app_handle || "ecom-page-speed-expert";
+  const app_handle =
+    process.env.VITE_EMBEDED_APP_HANDLE ||
+    process.env.VITE_EMBEDED_app_handle ||
+    process.env.VITE_SHOPIFY_APP_HANDLE ||
+    "ecom-speed-experts-2";
 
   const themeQuery = `
     query {
