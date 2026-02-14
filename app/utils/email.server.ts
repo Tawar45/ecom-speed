@@ -11,26 +11,40 @@ export interface WelcomeEmailData {
   recivederEmail: string;
   planName: string;
 }
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: Number(process.env.SMTP_PORT) === 465, // true for 465, false for others
-  auth: {
-    user: process.env.SMTP_USER || 'rohit45.tawar@gmail.com',
-    pass: process.env.SMTP_PASS || 'ftju effl jzrk ghxr',
-  },
-});
+const emailEnabled = process.env.EMAIL_ENABLED !== "false";
+const smtpHost = process.env.SMTP_HOST;
+const smtpPort = Number(process.env.SMTP_PORT || 587);
+const smtpUser = process.env.SMTP_USER;
+const smtpPass = process.env.SMTP_PASS;
+const smtpFrom = process.env.SMTP_FROM_EMAIL;
+const isSmtpConfigured = Boolean(emailEnabled && smtpHost && smtpUser && smtpPass && smtpFrom);
 
-// Verify SMTP configuration
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('[EMAIL] SMTP connection failed:', error);
-  }
-});
+const transporter = isSmtpConfigured
+  ? nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 5000,
+    })
+  : null;
+
+if (transporter) {
+  transporter.verify((error) => {
+    if (error) {
+      console.error('[EMAIL] SMTP connection failed:', error);
+    }
+  });
+}
 
 export async function sendWelcomeEmailInstalledMaill(ShopInfo: any) {
-  if (!process.env.SMTP_FROM_EMAIL) {
-    console.warn(" [EMAIL] SMTP_FROM_EMAIL not configured, skipping welcome email");
+  if (!transporter || !smtpFrom) {
+    console.warn(" [EMAIL] SMTP not configured, skipping welcome email");
     return;
   }
 
@@ -49,7 +63,7 @@ export async function sendWelcomeEmailInstalledMaill(ShopInfo: any) {
 
   const msg = {
     to: recipientEmail, // FIXED
-    from: process.env.SMTP_FROM_EMAIL,
+    from: smtpFrom,
     subject: `Welcome - ${shopName} Plan`,
     html: welcomeEmailTemplate({
       shopName,
@@ -73,8 +87,8 @@ export async function sendWelcomeEmail(
   recivederEmail: string
 ): Promise<void> {
 
-  if (!process.env.SMTP_FROM_EMAIL) {
-    console.warn('[EMAIL] SMTP_FROM_EMAIL not configured, skipping email');
+  if (!transporter || !smtpFrom) {
+    console.warn('[EMAIL] SMTP not configured, skipping email');
     return;
   }
 
@@ -86,7 +100,7 @@ export async function sendWelcomeEmail(
   const planName = planNames[plan as keyof typeof planNames] || plan;
   const msg = {
     to: recivederEmail,  //'rohit45.tawar@gmail.com',
-    from: process.env.SMTP_FROM_EMAIL,
+    from: smtpFrom,
     subject: `Welcome to ${planName} Plan!`,
     html: welcomeEmailTemplate({ shopName: shopDomain, planName: 'planName' }),
   };
@@ -105,8 +119,8 @@ export async function sendCancellationEmail(
   username: string,
   recipientEmail: string
 ): Promise<void> {
-  if (!process.env.SMTP_FROM_EMAIL) {
-    console.warn('[EMAIL] SMTP_FROM_EMAIL not configured, skipping cancellation email');
+  if (!transporter || !smtpFrom) {
+    console.warn('[EMAIL] SMTP not configured, skipping cancellation email');
     return;
   }
   const planNames = { basic: 'Basic', pro: 'Pro', business: 'Business' };
@@ -114,7 +128,7 @@ export async function sendCancellationEmail(
 
   const msg = {
     to: recipientEmail,
-    from: process.env.SMTP_FROM_EMAIL,
+    from: smtpFrom,
     subject: `Subscription Cancelled - ${planName} Plan`,
     html: cancellationEmailTemplate({ shopName: shopDomain, planName, cancelDate: '26-12-2025', username }),
   };
@@ -131,8 +145,8 @@ export async function sendExpirationEmail(
   recepientEmail: string
 ): Promise<void> {
 
-  if (!process.env.SMTP_FROM_EMAIL) {
-    console.warn('[EMAIL] SMTP_FROM_EMAIL not configured, skipping expiration email');
+  if (!transporter || !smtpFrom) {
+    console.warn('[EMAIL] SMTP not configured, skipping expiration email');
     return;
   }
 
@@ -140,7 +154,7 @@ export async function sendExpirationEmail(
   const planName = planNames[plan as keyof typeof planNames] || plan;
   const msg = {
     to: recepientEmail,
-    from: process.env.SMTP_FROM_EMAIL,
+    from: smtpFrom,
     subject: `Your ${planName} Plan Has Expired`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

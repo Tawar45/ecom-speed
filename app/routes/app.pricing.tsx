@@ -74,7 +74,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
             amount = 0;
           }
           const recipient = process.env.EMAIL_SUPPORT_TO; // fallback; replace with real recipient logic
-          await sendWelcomeEmail(shopDomain, planName, Number(amount), recivederEmail);
+          void sendWelcomeEmail(shopDomain, planName, Number(amount), recivederEmail).catch(
+            (emailErr) => {
+              console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
+            }
+          );
         } catch (emailErr) {
           console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
         }
