@@ -116,20 +116,42 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         });
 
         if (existingActive) {
-          await (prisma as any).subscription.update({
-            where: { id: existingActive.id },
-            data: { plan, price, status: "active", email: recipientEmail },
-          });
+          try {
+            await (prisma as any).subscription.update({
+              where: { id: existingActive.id },
+              data: { plan, price, status: "active", email: recipientEmail },
+            });
+          } catch (updateErr) {
+            const msg = updateErr instanceof Error ? updateErr.message : "";
+            if (!msg.includes("Unknown argument `email`")) throw updateErr;
+            await (prisma as any).subscription.update({
+              where: { id: existingActive.id },
+              data: { plan, price, status: "active" },
+            });
+          }
         } else {
-          await (prisma as any).subscription.create({
-            data: {
-              shopId: shop.id,
-              plan,
-              price,
-              status: "active",
-              email: recipientEmail,
-            },
-          });
+          try {
+            await (prisma as any).subscription.create({
+              data: {
+                shopId: shop.id,
+                plan,
+                price,
+                status: "active",
+                email: recipientEmail,
+              },
+            });
+          } catch (createErr) {
+            const msg = createErr instanceof Error ? createErr.message : "";
+            if (!msg.includes("Unknown argument `email`")) throw createErr;
+            await (prisma as any).subscription.create({
+              data: {
+                shopId: shop.id,
+                plan,
+                price,
+                status: "active",
+              },
+            });
+          }
         }
       } catch (dbSyncError) {
         console.error("[PRICING LOADER] Failed to sync subscription in DB:", dbSyncError);

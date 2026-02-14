@@ -96,11 +96,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
 
       if (cancelledSubscription) {
-        try {
-          await sendCancellationEmail(session.shop, cancelledSubscription.plan ,username, recipientEmail);
-        } catch (err) {
+        void sendCancellationEmail(
+          session.shop,
+          cancelledSubscription.plan,
+          username,
+          recipientEmail
+        ).catch((err) => {
           console.error("Failed to send cancellation email:", err);
-        }
+        });
       }
     }
 

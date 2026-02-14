@@ -192,15 +192,28 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         }
       });
     } else {
-      const newSubscription = await (prisma as any).subscription.create({
-        data: {
-          shopId: shop.id,
-          plan,
-          price,
-          status: "active",
-          email: recivederEmail
-        }
-      });
+      try {
+        await (prisma as any).subscription.create({
+          data: {
+            shopId: shop.id,
+            plan,
+            price,
+            status: "active",
+            email: recivederEmail
+          }
+        });
+      } catch (createErr) {
+        const msg = createErr instanceof Error ? createErr.message : "";
+        if (!msg.includes("Unknown argument `email`")) throw createErr;
+        await (prisma as any).subscription.create({
+          data: {
+            shopId: shop.id,
+            plan,
+            price,
+            status: "active"
+          }
+        });
+      }
     }
 
     // Send welcome email
