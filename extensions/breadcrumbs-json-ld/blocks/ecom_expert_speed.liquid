@@ -1,20 +1,60 @@
-{% if block.settings.ecom_expert_speed %}
-  {% assign avg_rating = block.settings.product.metafields.demo.avg_rating.value | round %}
-  <span style="color:{{ block.settings.colour }}">
-    {% render 'stars', rating: avg_rating %}
-  </span>
-  {% if avg_rating >= 4 %}
-    <br>
-    <img src="{{ "thumbs-up.png" | asset_img_url: '15x' }}" height="15" width="15" loading="lazy">
-    {{ 'ratings.home.recommendationText' | t }}
-  {% endif %}
-{% endif %}
+{% assign hover_delay = block.settings.hover_delay_ms | default: 65 %}
+{% assign prefetch_on_hover = block.settings.prefetch_on_hover %}
+{% assign prefetch_on_touch = block.settings.prefetch_on_touch %}
+{% assign same_origin_only = block.settings.same_origin_only %}
+{% assign ignore_slow_connections = block.settings.ignore_slow_connections %}
+
+<div {{ block.shopify_attributes }} hidden></div>
+<script>
+  window.EcomSpeedExpertConfig = {
+    hoverDelayMs: {{ hover_delay | json }},
+    prefetchOnHover: {{ prefetch_on_hover | json }},
+    prefetchOnTouch: {{ prefetch_on_touch | json }},
+    sameOriginOnly: {{ same_origin_only | json }},
+    ignoreSlowConnections: {{ ignore_slow_connections | json }}
+  };
+</script>
+{{ 'ecom-speed-expert.js' | asset_url | script_tag }}
 
 {% schema %}
 {
-  "name": "Ecom expert Speed",
+  "name": "Page Speed Expert",
   "target": "body",
   "settings": [
+    {
+      "type": "checkbox",
+      "id": "prefetch_on_hover",
+      "label": "Prefetch links on hover",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "prefetch_on_touch",
+      "label": "Prefetch links on touch",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "same_origin_only",
+      "label": "Only prefetch links on this storefront",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "ignore_slow_connections",
+      "label": "Skip prefetching for data saver and slow connections",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "hover_delay_ms",
+      "label": "Hover delay before prefetching",
+      "min": 50,
+      "max": 250,
+      "step": 5,
+      "unit": "ms",
+      "default": 65
+    }
   ]
 }
 {% endschema %}
