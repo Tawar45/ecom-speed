@@ -6,6 +6,13 @@ import { sendWelcomeEmailInstalledMaill } from "../utils/email.server";
 import { useEffect, useState ,useRef  } from "react";
 import { handleShopSession } from "../utils/email.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const appEmbedConfig = {
+    apiKey: process.env.SHOPIFY_API_KEY || null,
+    handle:
+      process.env.SHOPIFY_THEME_APP_EMBED_HANDLE ||
+      process.env.VITE_SHOPIFY_THEME_APP_EMBED_HANDLE ||
+      "ecom_expert_speed",
+  };
 
   try {
     const { session, admin } = await authenticate.admin(request);
@@ -15,7 +22,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     if (!shop || !shop.id) {
       console.warn("[DASHBOARD] Shop not found after handleShopSession");
-      return { shop: null };
+      return { shop: null, appEmbedConfig };
     }
     // Check for pending subscriptions and activate them
     const pendingSubscription = await (prisma as any).subscription.findFirst({
@@ -117,7 +124,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       shop: shop ? {
         domain: shop.domain,
         subscription: (shop as any)?.subscriptions[0] || null
-      } : null
+      } : null,
+      appEmbedConfig,
     };
 
     return result;
@@ -127,7 +135,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       stack: error instanceof Error ? error.stack : undefined,
       error
     });
-    return { shop: null };
+    return { shop: null, appEmbedConfig };
   }
 };
 
@@ -151,6 +159,7 @@ function getFirstKey(obj: any) {
 export default function Index() {
   const data = useLoaderData<typeof loader>();
   const shop = data?.shop ?? null;
+  const appEmbedConfig = data?.appEmbedConfig ?? null;
 
   // Show a proper error/empty state instead of blank page (fixes review: stuck loading, 2.1.1)
   if (!shop) {
@@ -231,8 +240,11 @@ export default function Index() {
 
             // set extension/type metadata for open settings link
             if (embedItem.type) {
-              setExtensionId(extractEmbededAppId(embedItem.type));
-              setEmbededAppName(extractBlockType(embedItem.type));
+              const nextExtensionId = extractEmbededAppId(embedItem.type);
+              const nextEmbededAppName = extractBlockType(embedItem.type);
+
+              setExtensionId(nextExtensionId);
+              setEmbededAppName(nextEmbededAppName);
             } else {
               setExtensionId(null);
               setEmbededAppName(null);
@@ -242,7 +254,6 @@ export default function Index() {
             setEmbededApp(false);
             setExtensionId(null);
             setEmbededAppName(null);
-            console.warn("No embedEnabled settings found in response.");
           }
           if (data.themes?.length > 0) {
             const main = data.themes.find((t: any) => t.role === "MAIN");
@@ -262,13 +273,26 @@ export default function Index() {
   }, []);
 
   const openEmbedSettings = () => {
-    if (!themeId || !shop?.domain || !embededAppName || !extensionId || !embededAppName) {
-      {
-        console.error("Missing data to open embed settings:", { themeId, shopDomain: shop?.domain, embededAppName, extensionId });
-        // return;
-      };
+    if (!shop?.domain) {
+      console.error("[dashboard] missing shop domain to open embed settings", {
+        themeId,
+        shopDomain: shop?.domain,
+        embededAppName,
+        extensionId,
+        appEmbedConfig,
+      });
+      return;
     }
-    const url = `https://${shop?.domain}/admin/themes/current/editor?context=apps&activateAppId=${extensionId}/${embededAppName}`;
+
+    const activateAppId = extensionId && embededAppName
+      ? `${extensionId}/${embededAppName}`
+      : appEmbedConfig?.apiKey && appEmbedConfig?.handle
+        ? `${appEmbedConfig.apiKey}/${appEmbedConfig.handle}`
+        : null;
+
+    const url = activateAppId
+      ? `https://${shop.domain}/admin/themes/current/editor?context=apps&activateAppId=${activateAppId}`
+      : `https://${shop.domain}/admin/themes/current/editor?context=apps`;
     window.open(url, "_blank");
   };
 
