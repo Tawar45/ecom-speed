@@ -341,7 +341,7 @@ export default function Index() {
       </div>
       <div>
         <div style={{ fontWeight: 600, fontSize: 18, color: "#202223", lineHeight: 1.4 }}>
-          Welcome to Page Speed Expert
+          Welcome to Ecom Page Speed Expert
         </div>
         <div style={{ fontSize: 15, color: "#6d7175", marginTop: 4, lineHeight: 1.5 }}>
           We're excited to have you. Skyrocket your Shopify store’s performance without compromising design or features.
