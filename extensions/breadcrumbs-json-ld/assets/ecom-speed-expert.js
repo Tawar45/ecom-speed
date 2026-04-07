@@ -4,131 +4,148 @@
 
   var defaults = {
     hoverDelayMs: 65,
-    prefetchOnHover: true,
-    prefetchOnTouch: true,
-    sameOriginOnly: true,
-    ignoreSlowConnections: true
+    touchCooldownMs: 1100,
+    allowExternalLinks: false,
+    allowQueryStrings: false,
+    respectDataSaver: true
   };
 
   var config = Object.assign({}, defaults, window.EcomSpeedExpertConfig || {});
+  var urlToPreload;
+  var mouseoverTimer;
+  var lastTouchTimestamp = 0;
+  var prefetcher = document.createElement("link");
   var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  var prefetched = new Set();
-  var hoverTimer = null;
-  var activeLink = null;
+  var isSupported = prefetcher.relList && prefetcher.relList.supports && prefetcher.relList.supports("prefetch");
+  var isDataSaverEnabled = connection && connection.saveData;
+  var bodyDataset = document.body ? document.body.dataset : {};
+  var bodyAllowQueryString = bodyDataset && Object.prototype.hasOwnProperty.call(bodyDataset, "instantAllowQueryString");
+  var bodyAllowExternalLinks = bodyDataset && Object.prototype.hasOwnProperty.call(bodyDataset, "instantAllowExternalLinks");
 
-  function shouldSkipForConnection() {
-    if (!config.ignoreSlowConnections || !connection) return false;
-    if (connection.saveData) return true;
+  if (!isSupported) return;
+  if (config.respectDataSaver && isDataSaverEnabled) return;
 
-    var effectiveType = connection.effectiveType || "";
-    return effectiveType.indexOf("2g") !== -1 || effectiveType === "slow-2g";
+  prefetcher.rel = "prefetch";
+  document.head.appendChild(prefetcher);
+
+  document.addEventListener("touchstart", touchstartListener, { capture: true, passive: true });
+  document.addEventListener("mouseover", mouseoverListener, { capture: true, passive: true });
+
+  function touchstartListener(event) {
+    var link = getLinkFromTarget(event.target);
+    lastTouchTimestamp = performance.now();
+
+    if (!isPreloadable(link)) return;
+
+    link.addEventListener("touchcancel", touchendAndTouchcancelListener, { passive: true });
+    link.addEventListener("touchend", touchendAndTouchcancelListener, { passive: true });
+    urlToPreload = link.href;
+    preload(link.href);
   }
 
-  function isHtmlLikePath(pathname) {
-    return !/\.(zip|xml|json|jpg|jpeg|png|gif|webp|svg|pdf|mp4|mp3|woff2?|ttf|eot)$/i.test(pathname);
+  function touchendAndTouchcancelListener() {
+    urlToPreload = undefined;
+    stopPreloading();
   }
 
-  function getEligibleLink(target) {
-    if (!target || typeof target.closest !== "function") return null;
+  function mouseoverListener(event) {
+    var link;
+    var touchCooldownMs = Number(config.touchCooldownMs);
+    var hoverDelayMs = Number(config.hoverDelayMs);
 
-    var link = target.closest("a[href]");
-    if (!link) return null;
-    if (link.target === "_blank" || link.hasAttribute("download")) return null;
-    if (link.dataset.noPrefetch === "true") return null;
+    if (Number.isNaN(touchCooldownMs)) touchCooldownMs = defaults.touchCooldownMs;
+    if (Number.isNaN(hoverDelayMs)) hoverDelayMs = defaults.hoverDelayMs;
 
-    var href = link.getAttribute("href");
-    if (!href || href.charAt(0) === "#" || href.indexOf("mailto:") === 0 || href.indexOf("tel:") === 0) {
-      return null;
+    if (performance.now() - lastTouchTimestamp < touchCooldownMs) {
+      return;
     }
 
+    link = getLinkFromTarget(event.target);
+    if (!isPreloadable(link)) return;
+
+    if (mouseoverTimer) {
+      window.clearTimeout(mouseoverTimer);
+    }
+
+    link.addEventListener("mouseout", mouseoutListener, { passive: true });
+    urlToPreload = link.href;
+    mouseoverTimer = window.setTimeout(function () {
+      preload(link.href);
+      mouseoverTimer = undefined;
+    }, hoverDelayMs);
+  }
+
+  function mouseoutListener(event) {
+    if (event.relatedTarget && getLinkFromTarget(event.target) === getLinkFromTarget(event.relatedTarget)) {
+      return;
+    }
+
+    if (mouseoverTimer) {
+      window.clearTimeout(mouseoverTimer);
+      mouseoverTimer = undefined;
+      return;
+    }
+
+    urlToPreload = undefined;
+    stopPreloading();
+  }
+
+  function getLinkFromTarget(target) {
+    if (!target || typeof target.closest !== "function") return null;
+    return target.closest("a[href]");
+  }
+
+  function isPreloadable(link) {
     var url;
+    var externalOk;
+    var queryOk;
+
+    if (!link || !link.href) return false;
+    if (urlToPreload === link.href) return false;
+    if (link.target === "_blank" || link.hasAttribute("download")) return false;
+    if (link.hasAttribute("data-no-instant") || link.dataset.noInstant !== undefined) return false;
+
     try {
       url = new URL(link.href, window.location.href);
     } catch (error) {
-      return null;
+      return false;
     }
 
-    if (config.sameOriginOnly && url.origin !== window.location.origin) return null;
-    if (url.origin !== window.location.origin) return null;
-    if (url.pathname === window.location.pathname && url.search === window.location.search) return null;
-    if (!isHtmlLikePath(url.pathname)) return null;
+    externalOk =
+      config.allowExternalLinks ||
+      bodyAllowExternalLinks ||
+      url.origin === window.location.origin ||
+      link.hasAttribute("data-instant") ||
+      link.dataset.instant !== undefined;
+    if (!externalOk) return false;
 
-    return url;
-  }
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    if (url.protocol === "http:" && window.location.protocol === "https:") return false;
 
-  function prefetchUrl(url) {
-    var key = url.toString();
-    if (prefetched.has(key) || shouldSkipForConnection()) return;
+    queryOk =
+      config.allowQueryStrings ||
+      bodyAllowQueryString ||
+      !url.search ||
+      link.hasAttribute("data-instant") ||
+      link.dataset.instant !== undefined;
+    if (!queryOk) return false;
 
-    prefetched.add(key);
-
-    var link = document.createElement("link");
-    link.rel = "prefetch";
-    link.as = "document";
-    link.href = key;
-
-    document.head.appendChild(link);
-  }
-
-  function clearHoverTimer() {
-    if (hoverTimer !== null) {
-      window.clearTimeout(hoverTimer);
-      hoverTimer = null;
+    if (url.hash && url.pathname + url.search === window.location.pathname + window.location.search) {
+      return false;
     }
-    activeLink = null;
+
+    if (url.pathname === window.location.pathname && url.search === window.location.search) {
+      return false;
+    }
+
+    return true;
   }
 
-  document.addEventListener(
-    "pointerenter",
-    function (event) {
-      if (!config.prefetchOnHover) return;
+  function preload(href) {
+    prefetcher.href = href;
+  }
 
-      var url = getEligibleLink(event.target);
-      if (!url) return;
-
-      clearHoverTimer();
-      activeLink = url.toString();
-      hoverTimer = window.setTimeout(function () {
-        if (activeLink === url.toString()) {
-          prefetchUrl(url);
-        }
-      }, Number(config.hoverDelayMs) || defaults.hoverDelayMs);
-    },
-    true
-  );
-
-  document.addEventListener(
-    "pointerleave",
-    function (event) {
-      if (!activeLink) return;
-
-      var url = getEligibleLink(event.target);
-      if (!url || url.toString() === activeLink) {
-        clearHoverTimer();
-      }
-    },
-    true
-  );
-
-  document.addEventListener(
-    "focusin",
-    function (event) {
-      if (!config.prefetchOnHover) return;
-
-      var url = getEligibleLink(event.target);
-      if (url) prefetchUrl(url);
-    },
-    true
-  );
-
-  document.addEventListener(
-    "touchstart",
-    function (event) {
-      if (!config.prefetchOnTouch) return;
-
-      var url = getEligibleLink(event.target);
-      if (url) prefetchUrl(url);
-    },
-    { capture: true, passive: true }
-  );
+  function stopPreloading() {
+    prefetcher.removeAttribute("href");
+  }
 })();

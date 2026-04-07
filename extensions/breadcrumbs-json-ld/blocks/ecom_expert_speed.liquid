@@ -1,20 +1,16 @@
-{% assign hover_delay = block.settings.hover_delay_ms | default: 65 %}
-{% assign prefetch_on_hover = block.settings.prefetch_on_hover %}
-{% assign prefetch_on_touch = block.settings.prefetch_on_touch %}
-{% assign same_origin_only = block.settings.same_origin_only %}
-{% assign ignore_slow_connections = block.settings.ignore_slow_connections %}
-
 <div {{ block.shopify_attributes }} hidden></div>
+{% if block.settings.enabled %}
 <script>
-  window.EcomSpeedExpertConfig = {
-    hoverDelayMs: {{ hover_delay | json }},
-    prefetchOnHover: {{ prefetch_on_hover | json }},
-    prefetchOnTouch: {{ prefetch_on_touch | json }},
-    sameOriginOnly: {{ same_origin_only | json }},
-    ignoreSlowConnections: {{ ignore_slow_connections | json }}
-  };
+  window.EcomSpeedExpertConfig = Object.assign({}, window.EcomSpeedExpertConfig || {}, {
+    hoverDelayMs: {{ block.settings.hover_delay | default: 65 | json }},
+    touchCooldownMs: {{ block.settings.touch_cooldown | default: 1100 | json }},
+    allowExternalLinks: {{ block.settings.allow_external | json }},
+    allowQueryStrings: {{ block.settings.allow_query_strings | json }},
+    respectDataSaver: {{ block.settings.respect_data_saver | json }}
+  });
 </script>
 {{ 'ecom-speed-expert.js' | asset_url | script_tag }}
+{% endif %}
 
 {% schema %}
 {
@@ -22,38 +18,59 @@
   "target": "body",
   "settings": [
     {
-      "type": "checkbox",
-      "id": "prefetch_on_hover",
-      "label": "Prefetch links on hover",
-      "default": true
+      "type": "header",
+      "content": "About The App",
+      "info": "Free Plan works only on the home page. Expert Plan works on all pages: products, collections, blog, search, cart, checkout, and other pages."
     },
     {
       "type": "checkbox",
-      "id": "prefetch_on_touch",
-      "label": "Prefetch links on touch",
-      "default": true
-    },
-    {
-      "type": "checkbox",
-      "id": "same_origin_only",
-      "label": "Only prefetch links on this storefront",
-      "default": true
-    },
-    {
-      "type": "checkbox",
-      "id": "ignore_slow_connections",
-      "label": "Skip prefetching for data saver and slow connections",
-      "default": true
+      "id": "enabled",
+      "label": "Enable instant prefetch",
+      "default": true,
+      "info": "Preloads pages when users hover or touch links."
     },
     {
       "type": "range",
-      "id": "hover_delay_ms",
-      "label": "Hover delay before prefetching",
-      "min": 50,
-      "max": 250,
+      "id": "hover_delay",
+      "label": "Mouse hover delay",
+      "min": 0,
+      "max": 300,
       "step": 5,
       "unit": "ms",
-      "default": 65
+      "default": 65,
+      "info": "Time to wait before prefetching on hover."
+    },
+    {
+      "type": "range",
+      "id": "touch_cooldown",
+      "label": "Touch cooldown",
+      "min": 0,
+      "max": 2000,
+      "step": 100,
+      "unit": "ms",
+      "default": 1100,
+      "info": "Ignore mouse events for this long after a touch."
+    },
+    {
+      "type": "checkbox",
+      "id": "allow_external",
+      "label": "Allow external links",
+      "default": false,
+      "info": "Prefetch links to other domains."
+    },
+    {
+      "type": "checkbox",
+      "id": "allow_query_strings",
+      "label": "Allow query strings",
+      "default": false,
+      "info": "Prefetch URLs that include query parameters."
+    },
+    {
+      "type": "checkbox",
+      "id": "respect_data_saver",
+      "label": "Respect Data Saver mode",
+      "default": true,
+      "info": "Skip prefetching when the visitor has data saver enabled."
     }
   ]
 }
