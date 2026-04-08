@@ -49,41 +49,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const response = await admin.graphql(combinedQuery);
     const data = await response.json() as any;
     const activeSubscriptions = data.data?.currentAppInstallation?.activeSubscriptions || [];
-    // If there's an active subscription, inspect its status and optionally send a welcome email.
     const activeSubscription = activeSubscriptions.length > 0 ? activeSubscriptions[0] : null;
     if (activeSubscription) {
-      // Normalize status (Shopify may use 'ACTIVE', 'active', 'accepted', etc.)
-      const status = (activeSubscription.status ?? "").toString().toLowerCase();
-      // Decide which statuses you consider successful/final for sending welcome email
-      const successStatuses = ["active", "accepted", "paid", "success"];
-
-      if (successStatuses.includes(status) && chargeId) {
-        try {
-          // dynamic import so this module stays server-only
-          const { sendWelcomeEmail } = await import("../utils/email.server");
-          // Compose email fields
-          const shopDomain = session.shop; // e.g. "example-store.myshopify.com"
-          const planName = activeSubscription.name ?? "Your Plan";
-          const recivederEmail = data?.data?.shop.email
-          // Try to find a price/amount if present
-          let amount = 0;
-          try {
-            const lineItem = activeSubscription.lineItems?.[0];
-            amount = lineItem?.plan?.pricingDetails?.price?.amount ?? 0;
-          } catch (_) {
-            amount = 0;
-          }
-          const recipient = process.env.EMAIL_SUPPORT_TO; // fallback; replace with real recipient logic
-          void sendWelcomeEmail(shopDomain, planName, Number(amount), recivederEmail).catch(
-            (emailErr) => {
-              console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
-            }
-          );
-        } catch (emailErr) {
-          console.error("[PRICING LOADER] Failed to send welcome email:", emailErr);
-        }
-      } 
-
       // Keep local DB subscription in sync from a fully authenticated server request.
       try {
         const plan = (activeSubscription.name ?? "")
@@ -210,7 +177,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // Create app subscription using Shopify GraphQL (2025 compliant) //test: true
     const mutation = `
       mutation appSubscriptionCreate($name: String!, $lineItems: [AppSubscriptionLineItemInput!]!, $returnUrl: URL!) {
-        appSubscriptionCreate(name: $name, lineItems: $lineItems, returnUrl: $returnUrl) {
+        appSubscriptionCreate(name: $name, lineItems: $lineItems, returnUrl: $returnUrl, test: true) {
           appSubscription {
             id
             status

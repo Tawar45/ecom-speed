@@ -5,6 +5,11 @@ import prisma from "../db.server";
 import { sendWelcomeEmailInstalledMaill } from "../utils/email.server";
 import { useEffect, useState ,useRef  } from "react";
 import { handleShopSession } from "../utils/email.server";
+
+function isRedirectResponse(error: unknown): error is Response {
+  return error instanceof Response && error.status >= 300 && error.status < 400;
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const appEmbedConfig = {
     apiKey: process.env.SHOPIFY_API_KEY || null,
@@ -104,6 +109,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           });
         }
       } catch (error) {
+        if (isRedirectResponse(error)) {
+          throw error;
+        }
         console.error(" [DASHBOARD] Failed to check Shopify subscriptions:", error);
       }
     }
@@ -130,6 +138,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     return result;
   } catch (error) {
+    if (isRedirectResponse(error)) {
+      throw error;
+    }
     console.error("[DASHBOARD] Error loading shop data:", {
       message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,

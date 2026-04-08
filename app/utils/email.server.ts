@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { getShopInfo } from "./graphql-query";
 import nodemailer from 'nodemailer';
 import { welcomeEmailTemplate } from "./welcome_template";
+
 export interface WelcomeEmailData {
   shopDomain: string;
   plan: string;
@@ -11,41 +12,101 @@ export interface WelcomeEmailData {
   recivederEmail: string;
   planName: string;
 }
-const emailEnabled = process.env.EMAIL_ENABLED !== "false";
-const smtpHost = process.env.SMTP_HOST;
-const smtpPort = Number(process.env.SMTP_PORT || 587);
-const smtpUser = process.env.SMTP_USER;
-const smtpPass = process.env.SMTP_PASS;
-const smtpFrom = process.env.SMTP_FROM_EMAIL;
+
+function readEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  if (!value) return undefined;
+  return value.replace(/^['"]|['"]$/g, "");
+}
+
+function readNumberEnv(name: string, fallback: number): number {
+  const raw = readEnv(name);
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function readBooleanEnv(name: string): boolean | undefined {
+  const raw = readEnv(name)?.toLowerCase();
+  if (!raw) return undefined;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return undefined;
+}
+
+function normalizeSmtpPassword(password?: string, host?: string): string | undefined {
+  if (!password) return undefined;
+  const normalizedHost = host?.toLowerCase() ?? "";
+  if (
+    normalizedHost.includes("gmail.com") &&
+    /^[a-z0-9]{4}( [a-z0-9]{4}){3}$/i.test(password)
+  ) {
+    return password.replace(/\s+/g, "");
+  }
+  return password;
+}
+
+function logEmailError(context: string, error: unknown) {
+  console.error(`[EMAIL] Error sending ${context}:`, error);
+
+  if (
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code?: string }).code === "ETIMEDOUT"
+  ) {
+    console.error(
+      `[EMAIL] SMTP connection to ${smtpHost}:${smtpPort} timed out. ` +
+        "This usually means the server cannot reach the SMTP host or that the host/port pair is blocked."
+    );
+  }
+
+  if (
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code?: string }).code === "EAUTH"
+  ) {
+    console.error(
+      "[EMAIL] SMTP authentication failed. For Gmail, use the full Gmail address as SMTP_USER and a valid 16-character app password as SMTP_PASS."
+    );
+  }
+}
+
+const emailEnabled = readBooleanEnv("EMAIL_ENABLED") !== false;
+const smtpHost = readEnv("SMTP_HOST");
+const smtpPort = readNumberEnv("SMTP_PORT", 587);
+const smtpUser = readEnv("SMTP_USER");
+const smtpPass = normalizeSmtpPassword(readEnv("SMTP_PASS"), smtpHost);
+const smtpFrom = readEnv("SMTP_FROM_EMAIL");
+const smtpSecure = readBooleanEnv("SMTP_SECURE") ?? smtpPort === 465;
+const smtpConnectionTimeout = readNumberEnv("SMTP_CONNECTION_TIMEOUT", 10000);
+const smtpGreetingTimeout = readNumberEnv("SMTP_GREETING_TIMEOUT", 10000);
+const smtpSocketTimeout = readNumberEnv("SMTP_SOCKET_TIMEOUT", 10000);
 const isSmtpConfigured = Boolean(emailEnabled && smtpHost && smtpUser && smtpPass && smtpFrom);
 
 const transporter = isSmtpConfigured
   ? nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
-      secure: smtpPort === 465,
+      secure: smtpSecure,
       auth: {
         user: smtpUser,
         pass: smtpPass,
       },
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 5000,
+      connectionTimeout: smtpConnectionTimeout,
+      greetingTimeout: smtpGreetingTimeout,
+      socketTimeout: smtpSocketTimeout,
+      tls: {
+        servername: smtpHost,
+      },
     })
   : null;
 
-if (transporter) {
-  transporter.verify((error) => {
-    if (error) {
-      console.error('[EMAIL] SMTP connection failed:', error);
-    }
-  });
-}
-
-export async function sendWelcomeEmailInstalledMaill(ShopInfo: any) {
+export async function sendWelcomeEmailInstalledMaill(ShopInfo: any): Promise<boolean> {
   if (!transporter || !smtpFrom) {
     console.warn(" [EMAIL] SMTP not configured, skipping welcome email");
-    return;
+    return false;
   }
 
   // FIX: pick the correct email field
@@ -53,10 +114,10 @@ export async function sendWelcomeEmailInstalledMaill(ShopInfo: any) {
     ShopInfo.email ||
     ShopInfo.contactEmail ||
     null;
-
+console.log('recipientEmail----',recipientEmail);
   if (!recipientEmail) {
     console.error(" [EMAIL] No valid email found in ShopInfo:", ShopInfo);
-    return;
+    return false;
   }
 
   const shopName = ShopInfo.name || "Your Store";
@@ -72,10 +133,11 @@ export async function sendWelcomeEmailInstalledMaill(ShopInfo: any) {
   };
 
   try {
-    return await transporter.sendMail(msg);
+    await transporter.sendMail(msg);
+    return true;
   } catch (error) {
-    console.error(" [EMAIL] Error sending welcome email:", error);
-    return null;
+    logEmailError("welcome email", error);
+    return false;
   }
 }
 
@@ -102,13 +164,13 @@ export async function sendWelcomeEmail(
     to: recivederEmail,  //'rohit45.tawar@gmail.com',
     from: smtpFrom,
     subject: `Welcome to ${planName} Plan!`,
-    html: welcomeEmailTemplate({ shopName: shopDomain, planName: 'planName' }),
+    html: welcomeEmailTemplate({ shopName: shopDomain, planName }),
   };
 
   try {
     await transporter.sendMail(msg);
   } catch (error) {
-    console.error('[EMAIL] Error sending welcome email:', error);
+    logEmailError("welcome email", error);
     throw error;
   }
 }
@@ -119,6 +181,7 @@ export async function sendCancellationEmail(
   username: string,
   recipientEmail: string
 ): Promise<void> {
+  console.log('--------------recipientEmail--------------',recipientEmail);
   if (!transporter || !smtpFrom) {
     console.warn('[EMAIL] SMTP not configured, skipping cancellation email');
     return;
@@ -135,7 +198,7 @@ export async function sendCancellationEmail(
   try {
     await transporter.sendMail(msg);
   } catch (error) {
-    console.error('[EMAIL] Error sending cancellation email:', error);
+    logEmailError("cancellation email", error);
   }
 }
 
@@ -168,7 +231,7 @@ export async function sendExpirationEmail(
   try {
     await transporter.sendMail(msg);
   } catch (error) {
-    console.error('[EMAIL] Error sending expiration email:', error);
+    logEmailError("expiration email", error);
   }
 }
 
@@ -181,7 +244,7 @@ export async function handleShopSession(
     // -------------------------------
     // 1. Find existing shop (with last subscription)
     // -------------------------------
-    const shop = await prisma.shop.findUnique({
+    let shop = await prisma.shop.findUnique({
       where: { domain: session.shop },
       include: {
         subscriptions: {
@@ -194,13 +257,21 @@ export async function handleShopSession(
     // 2. If shop NOT found → create
     // -------------------------------
     if (!shop) {
-      const shop =  await prisma.shop.create({
+      shop = await prisma.shop.create({
         data: {
           domain: session.shop,
           accessToken: session.accessToken,
         },
+        include: {
+          subscriptions: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
       });
-      return shop;
+    }
+    if (!shop) {
+      throw new Error(`Failed to create or load shop for ${session.shop}`);
     }
     // -------------------------------
     // Send welcome email (only once)
@@ -208,9 +279,9 @@ export async function handleShopSession(
     if (!shop.welcomeEmailSent) {
       try {
         const info = await getShopInfo(admin);
-        const res = await sendWelcomeEmailInstalledMaill(info);
-        if (!res) {
-          console.error("[DASHBOARD] Failed to send welcome email: No response from email function");
+        const sent = await sendWelcomeEmailInstalledMaill(info);
+        if (!sent) {
+          console.warn("[DASHBOARD] Welcome email was not sent; keeping welcomeEmailSent=false so it can retry later.");
           return shop;
         }
         await prisma.shop.update({

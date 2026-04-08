@@ -181,16 +181,38 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const existingSubscription = await (prisma as any).subscription.findFirst({
       where: { shopId: shop.id, status: "active" }
     });
+    const shouldSendWelcomeEmail = Boolean(
+      recivederEmail &&
+      (
+        !existingSubscription ||
+        existingSubscription.plan !== plan ||
+        existingSubscription.email !== recivederEmail
+      )
+    );
 
     if (existingSubscription) {
-      await (prisma as any).subscription.update({
-        where: { id: existingSubscription.id },
-        data: {
-          plan,
-          price,
-          status: "active"
-        }
-      });
+      try {
+        await (prisma as any).subscription.update({
+          where: { id: existingSubscription.id },
+          data: {
+            plan,
+            price,
+            status: "active",
+            email: recivederEmail
+          }
+        });
+      } catch (updateErr) {
+        const msg = updateErr instanceof Error ? updateErr.message : "";
+        if (!msg.includes("Unknown argument `email`")) throw updateErr;
+        await (prisma as any).subscription.update({
+          where: { id: existingSubscription.id },
+          data: {
+            plan,
+            price,
+            status: "active"
+          }
+        });
+      }
     } else {
       try {
         await (prisma as any).subscription.create({
@@ -217,12 +239,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
 
     // Send welcome email
-    try {
-      // await sendWelcomeEmail(session.shop, plan, price);
-      // await sendWelcomeEmail(session.shop, plan, price);
-    } catch (emailError) {
-      console.error("[BILLING CONFIRM] Failed to send welcome email:", emailError);
-      // Don't fail the whole process if email fails
+    if (shouldSendWelcomeEmail && recivederEmail) {
+      try {
+        await sendWelcomeEmail(session.shop, plan, price, recivederEmail);
+      } catch (emailError) {
+        console.error("[BILLING CONFIRM] Failed to send welcome email:", emailError);
+        // Don't fail the whole process if email fails
+      }
     }
 
     return {

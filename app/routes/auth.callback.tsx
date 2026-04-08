@@ -7,7 +7,7 @@ import { getShopInfo } from "app/utils/graphql-query";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session, admin, redirect } = await authenticate.admin(request);
-
+console.log('------------callback---------------------------');
   if (!session || !session?.accessToken) {
     console.warn("[auth.callback] Session error");
     return new Response(null, {
@@ -33,19 +33,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (!existingShop?.welcomeEmailSent) {
     // Send email
     const ShopInfoResult = await getShopInfo(admin);
-    await sendWelcomeEmailInstalledMaill(ShopInfoResult);
+    const welcomeEmailSent = await sendWelcomeEmailInstalledMaill(ShopInfoResult);
 
     // Save or update shop in database
     await prisma.shop.upsert({
       where: { domain: session.shop },
       update: {
-        welcomeEmailSent: true,
+        welcomeEmailSent,
         accessToken: session.accessToken,
       },
       create: {
         domain: session.shop,
         accessToken: session?.accessToken,
-        welcomeEmailSent: true,
+        welcomeEmailSent,
       },
     });
   }
