@@ -1,8 +1,8 @@
 import { cancellationEmailTemplate } from "../utils/cancel_subscription_template";
 // import {welcomeEmailTemplate } from "../utils/welcome_template";
 import { PrismaClient } from "@prisma/client";
+import sgMail, { type MailDataRequired } from "@sendgrid/mail";
 import { getShopInfo } from "./graphql-query";
-import nodemailer from 'nodemailer';
 import { welcomeEmailTemplate } from "./welcome_template";
 
 export interface WelcomeEmailData {
@@ -19,13 +19,6 @@ function readEnv(name: string): string | undefined {
   return value.replace(/^['"]|['"]$/g, "");
 }
 
-function readNumberEnv(name: string, fallback: number): number {
-  const raw = readEnv(name);
-  if (!raw) return fallback;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
 function readBooleanEnv(name: string): boolean | undefined {
   const raw = readEnv(name)?.toLowerCase();
   if (!raw) return undefined;
@@ -34,78 +27,73 @@ function readBooleanEnv(name: string): boolean | undefined {
   return undefined;
 }
 
-function normalizeSmtpPassword(password?: string, host?: string): string | undefined {
-  if (!password) return undefined;
-  const normalizedHost = host?.toLowerCase() ?? "";
-  if (
-    normalizedHost.includes("gmail.com") &&
-    /^[a-z0-9]{4}( [a-z0-9]{4}){3}$/i.test(password)
-  ) {
-    return password.replace(/\s+/g, "");
-  }
-  return password;
-}
-
 function logEmailError(context: string, error: unknown) {
   console.error(`[EMAIL] Error sending ${context}:`, error);
 
   if (
     error &&
     typeof error === "object" &&
-    "code" in error &&
-    (error as { code?: string }).code === "ETIMEDOUT"
+    "response" in error
   ) {
-    console.error(
-      `[EMAIL] SMTP connection to ${smtpHost}:${smtpPort} timed out. ` +
-        "This usually means the server cannot reach the SMTP host or that the host/port pair is blocked."
-    );
-  }
-
-  if (
-    error &&
-    typeof error === "object" &&
-    "code" in error &&
-    (error as { code?: string }).code === "EAUTH"
-  ) {
-    console.error(
-      "[EMAIL] SMTP authentication failed. For Gmail, use the full Gmail address as SMTP_USER and a valid 16-character app password as SMTP_PASS."
-    );
+    const response = (error as {
+      response?: { body?: { errors?: Array<{ message?: string }> } };
+    }).response;
+    const apiErrors = response?.body?.errors?.map((entry) => entry.message).filter(Boolean);
+    if (apiErrors?.length) {
+      console.error(`[EMAIL] SendGrid response for ${context}: ${apiErrors.join(" | ")}`);
+    }
   }
 }
 
 const emailEnabled = readBooleanEnv("EMAIL_ENABLED") !== false;
-const smtpHost = readEnv("SMTP_HOST");
-const smtpPort = readNumberEnv("SMTP_PORT", 587);
-const smtpUser = readEnv("SMTP_USER");
-const smtpPass = normalizeSmtpPassword(readEnv("SMTP_PASS"), smtpHost);
-const smtpFrom = readEnv("SMTP_FROM_EMAIL");
-const smtpSecure = readBooleanEnv("SMTP_SECURE") ?? smtpPort === 465;
-const smtpConnectionTimeout = readNumberEnv("SMTP_CONNECTION_TIMEOUT", 10000);
-const smtpGreetingTimeout = readNumberEnv("SMTP_GREETING_TIMEOUT", 10000);
-const smtpSocketTimeout = readNumberEnv("SMTP_SOCKET_TIMEOUT", 10000);
-const isSmtpConfigured = Boolean(emailEnabled && smtpHost && smtpUser && smtpPass && smtpFrom);
+const sendgridApiKey = readEnv("SENDGRID_API_KEY");
+const emailFrom = readEnv("SENDGRID_FROM_EMAIL") ?? readEnv("SMTP_FROM_EMAIL");
+const sendgridFromName = readEnv("SENDGRID_FROM_NAME");
+const isSendGridConfigured = Boolean(emailEnabled && sendgridApiKey && emailFrom);
 
-const transporter = isSmtpConfigured
-  ? nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpSecure,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-      connectionTimeout: smtpConnectionTimeout,
-      greetingTimeout: smtpGreetingTimeout,
-      socketTimeout: smtpSocketTimeout,
-      tls: {
-        servername: smtpHost,
-      },
-    })
-  : null;
+if (sendgridApiKey) {
+  sgMail.setApiKey(sendgridApiKey);
+}
+
+function buildFromField(): MailDataRequired["from"] {
+  if (!emailFrom) {
+    throw new Error("[EMAIL] Missing sender email configuration");
+  }
+
+  return sendgridFromName
+    ? {
+        email: emailFrom,
+        name: sendgridFromName,
+      }
+    : emailFrom;
+}
+
+function htmlToText(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+type AppEmailMessage = {
+  to: MailDataRequired["to"];
+  subject: string;
+  html: string;
+  text?: string;
+};
+
+async function sendEmail(message: AppEmailMessage): Promise<void> {
+  if (!isSendGridConfigured) {
+    throw new Error("[EMAIL] SendGrid is not configured");
+  }
+
+  await sgMail.send({
+    ...message,
+    from: buildFromField(),
+    text: message.text ?? htmlToText(message.html),
+  });
+}
 
 export async function sendWelcomeEmailInstalledMaill(ShopInfo: any): Promise<boolean> {
-  if (!transporter || !smtpFrom) {
-    console.warn(" [EMAIL] SMTP not configured, skipping welcome email");
+  if (!isSendGridConfigured) {
+    console.warn(" [EMAIL] SendGrid not configured, skipping welcome email");
     return false;
   }
 
@@ -124,7 +112,6 @@ console.log('recipientEmail----',recipientEmail);
 
   const msg = {
     to: recipientEmail, // FIXED
-    from: smtpFrom,
     subject: `Welcome - ${shopName} Plan`,
     html: welcomeEmailTemplate({
       shopName,
@@ -133,7 +120,7 @@ console.log('recipientEmail----',recipientEmail);
   };
 
   try {
-    await transporter.sendMail(msg);
+    await sendEmail(msg);
     return true;
   } catch (error) {
     logEmailError("welcome email", error);
@@ -149,8 +136,8 @@ export async function sendWelcomeEmail(
   recivederEmail: string
 ): Promise<void> {
 
-  if (!transporter || !smtpFrom) {
-    console.warn('[EMAIL] SMTP not configured, skipping email');
+  if (!isSendGridConfigured) {
+    console.warn('[EMAIL] SendGrid not configured, skipping email');
     return;
   }
 
@@ -162,13 +149,12 @@ export async function sendWelcomeEmail(
   const planName = planNames[plan as keyof typeof planNames] || plan;
   const msg = {
     to: recivederEmail,  //'rohit45.tawar@gmail.com',
-    from: smtpFrom,
     subject: `Welcome to ${planName} Plan!`,
     html: welcomeEmailTemplate({ shopName: shopDomain, planName }),
   };
 
   try {
-    await transporter.sendMail(msg);
+    await sendEmail(msg);
   } catch (error) {
     logEmailError("welcome email", error);
     throw error;
@@ -182,8 +168,8 @@ export async function sendCancellationEmail(
   recipientEmail: string
 ): Promise<void> {
   console.log('--------------recipientEmail--------------',recipientEmail);
-  if (!transporter || !smtpFrom) {
-    console.warn('[EMAIL] SMTP not configured, skipping cancellation email');
+  if (!isSendGridConfigured) {
+    console.warn('[EMAIL] SendGrid not configured, skipping cancellation email');
     return;
   }
   const planNames = { basic: 'Basic', pro: 'Pro', business: 'Business' };
@@ -191,12 +177,11 @@ export async function sendCancellationEmail(
 
   const msg = {
     to: recipientEmail,
-    from: smtpFrom,
     subject: `Subscription Cancelled - ${planName} Plan`,
     html: cancellationEmailTemplate({ shopName: shopDomain, planName, cancelDate: '26-12-2025', username }),
   };
   try {
-    await transporter.sendMail(msg);
+    await sendEmail(msg);
   } catch (error) {
     logEmailError("cancellation email", error);
   }
@@ -208,8 +193,8 @@ export async function sendExpirationEmail(
   recepientEmail: string
 ): Promise<void> {
 
-  if (!transporter || !smtpFrom) {
-    console.warn('[EMAIL] SMTP not configured, skipping expiration email');
+  if (!isSendGridConfigured) {
+    console.warn('[EMAIL] SendGrid not configured, skipping expiration email');
     return;
   }
 
@@ -217,7 +202,6 @@ export async function sendExpirationEmail(
   const planName = planNames[plan as keyof typeof planNames] || plan;
   const msg = {
     to: recepientEmail,
-    from: smtpFrom,
     subject: `Your ${planName} Plan Has Expired`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -229,7 +213,7 @@ export async function sendExpirationEmail(
   };
 
   try {
-    await transporter.sendMail(msg);
+    await sendEmail(msg);
   } catch (error) {
     logEmailError("expiration email", error);
   }

@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer";
 import { useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
 import  Header from "../component/header";
