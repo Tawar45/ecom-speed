@@ -1,76 +1,129 @@
 <div {{ block.shopify_attributes }} hidden></div>
+
 {% if block.settings.enabled %}
-<script>
-  window.EcomSpeedExpertConfig = Object.assign({}, window.EcomSpeedExpertConfig || {}, {
-    hoverDelayMs: {{ block.settings.hover_delay | default: 65 | json }},
-    touchCooldownMs: {{ block.settings.touch_cooldown | default: 1100 | json }},
-    allowExternalLinks: {{ block.settings.allow_external | json }},
-    allowQueryStrings: {{ block.settings.allow_query_strings | json }},
-    respectDataSaver: {{ block.settings.respect_data_saver | json }}
-  });
-</script>
+  <script>
+    window.EcomSpeedExpertConfig = Object.assign({}, window.EcomSpeedExpertConfig || {}, {
+      hoverDelayMs: {{ block.settings.hover_delay | default: 65 | json }},
+      touchCooldownMs: {{ block.settings.touch_cooldown | default: 1100 | json }},
+      allowExternalLinks: {{ block.settings.allow_external | json }},
+      allowQueryStrings: {{ block.settings.allow_query_strings | json }},
+      respectDataSaver: {{ block.settings.respect_data_saver | json }},
+      prefetchLimit: {{ block.settings.prefetch_limit | default: 5 | json }},
+      prefetchOnViewport: {{ block.settings.viewport_prefetch | json }},
+      viewportDelay: {{ block.settings.viewport_delay | default: 1500 | json }},
+      debug: {{ block.settings.debug_mode | json }}
+    });
+  </script>
 {{ 'ecom-speed-expert.js' | asset_url | script_tag }}
+
 {% endif %}
 
 {% schema %}
 {
-  "name": "Page Speed Expert",
+  "name": "Ecom Page Speed Expert",
   "target": "body",
   "settings": [
     {
       "type": "header",
       "content": "About The App",
-      "info": "Free Plan works only on the home page. Expert Plan works on all pages: products, collections, blog, search, cart, checkout, and other pages."
+      "info": "Free Plan works only on the home page. Expert Plan works on all pages including products, collections, blogs, search, cart, and checkout."
     },
     {
       "type": "checkbox",
       "id": "enabled",
-      "label": "Enable instant prefetch",
+      "label": "Enable Page Speed Expert",
       "default": true,
-      "info": "Preloads pages when users hover or touch links."
+      "info": "Enable intelligent prefetching and speed optimization."
+    },
+    {
+      "type": "header",
+      "content": "Hover & Touch Settings"
     },
     {
       "type": "range",
       "id": "hover_delay",
-      "label": "Mouse hover delay",
+      "label": "Mouse Hover Delay",
       "min": 0,
       "max": 300,
       "step": 5,
       "unit": "ms",
       "default": 65,
-      "info": "Time to wait before prefetching on hover."
+      "info": "Delay before prefetching when users hover links."
     },
     {
       "type": "range",
       "id": "touch_cooldown",
-      "label": "Touch cooldown",
+      "label": "Touch Cooldown",
       "min": 0,
       "max": 2000,
       "step": 100,
       "unit": "ms",
       "default": 1100,
-      "info": "Ignore mouse events for this long after a touch."
+      "info": "Ignore hover events shortly after touch interactions."
+    },
+    {
+      "type": "header",
+      "content": "Prefetch Settings"
+    },
+    {
+      "type": "range",
+      "id": "prefetch_limit",
+      "label": "Maximum Prefetch Requests",
+      "min": 1,
+      "max": 20,
+      "step": 1,
+      "default": 5,
+      "info": "Limits the number of pages prefetched per session."
+    },
+    {
+      "type": "checkbox",
+      "id": "viewport_prefetch",
+      "label": "Enable Viewport Prefetch",
+      "default": true,
+      "info": "Prefetch visible product and collection links after page load."
+    },
+    {
+      "type": "range",
+      "id": "viewport_delay",
+      "label": "Viewport Prefetch Delay",
+      "min": 0,
+      "max": 5000,
+      "step": 100,
+      "unit": "ms",
+      "default": 1500,
+      "info": "Delay before viewport prefetch begins after page load."
+    },
+    {
+      "type": "header",
+      "content": "Advanced Options"
     },
     {
       "type": "checkbox",
       "id": "allow_external",
-      "label": "Allow external links",
+      "label": "Allow External Links",
       "default": false,
-      "info": "Prefetch links to other domains."
+      "info": "Allow prefetching links from external domains."
     },
     {
       "type": "checkbox",
       "id": "allow_query_strings",
-      "label": "Allow query strings",
-      "default": false,
-      "info": "Prefetch URLs that include query parameters."
+      "label": "Allow Query Strings",
+      "default": true,
+      "info": "Recommended ON for Shopify variant URLs and filters."
     },
     {
       "type": "checkbox",
       "id": "respect_data_saver",
-      "label": "Respect Data Saver mode",
+      "label": "Respect Data Saver Mode",
       "default": true,
-      "info": "Skip prefetching when the visitor has data saver enabled."
+      "info": "Disable prefetching for visitors using Data Saver or slow connections."
+    },
+    {
+      "type": "checkbox",
+      "id": "debug_mode",
+      "label": "Enable Debug Mode",
+      "default": false,
+      "info": "Logs optimization activity in the browser console."
     }
   ]
 }
